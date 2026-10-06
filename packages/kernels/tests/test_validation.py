@@ -112,3 +112,13 @@ def test_registry() -> None:
     assert set(REGISTRY) == {"gaussian_nb_train@1", "linear_ridge_train@1"}
     with pytest.raises(KeyError):
         get_kernel("evil@1")
+
+
+def test_prepared_npz_is_byte_reproducible_across_time() -> None:
+    import time
+
+    df = clf_frame(400, 3, 3, 7)
+    a = gnb.prepare(df, _g(df)).to_npz_bytes()
+    time.sleep(2.2)  # zip timestamps have 2 s resolution; np.savez would differ here
+    b = gnb.prepare(df, _g(df)).to_npz_bytes()
+    assert a == b
