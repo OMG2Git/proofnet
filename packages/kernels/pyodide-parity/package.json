@@ -1,0 +1,7 @@
+{
+  "name": "proofnet-pyodide-parity",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "pyodide": "314.0.7" }
+}
