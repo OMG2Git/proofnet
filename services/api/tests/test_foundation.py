@@ -61,7 +61,7 @@ def test_device_token_hash() -> None:
 
 
 def test_settings_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("CORS_ORIGINS", "http://a.com, https://b.com")
+    monkeypatch.setenv("CORS_ORIGINS", "http://a.com, https://b.com/")
     monkeypatch.setenv("MONGODB_DB", "x")
     s = Settings()
     assert s.cors_origin_list == ["http://a.com", "https://b.com"] and s.mongodb_db == "x"
