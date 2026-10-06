@@ -41,7 +41,7 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
 6. Part 2 only after M3 (offline research may run in parallel).
 
-Current phase: **P2** — Level-1 work implemented and tested locally against real Atlas (auth, devices, worker session/heartbeat, runtime bundle, datasets, tasks → queued, reconciler marks devices offline, minimal frontend). **Remaining for the P2 gate: deploy backend to Render + frontend to Vercel and verify Level 1 deployed** (needs the user's Render/Vercel/GitHub accounts). P0, P1 completed 2026-10-07. Update this line as phases complete.
+Current phase: **P3** — P0, P1, P2 completed 2026-10-07 (P2 verified locally and on the deployed Render+Vercel+Atlas stack). P3 implemented and verified on desktop Chromium (local and deployed): CLI worker, browser Pyodide worker, `/contribute`, `/contribute/run`, `/network`. **Remaining for the P3 gate (Level 2): two different physical Android phones register, show realistic different benchmark scores, go offline when backgrounded and recover; record phone load times/scores below.** Update this line as phases complete.
 
 ---
 
@@ -150,6 +150,6 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 | Pinned versions | Python 3.12 (backend/dev; core must also run on Pyodide's Python 3.14.2); **Pyodide 314.0.7** (Python 3.14.2, **NumPy 2.4.6**, from its lock file); backend NumPy **2.4.6** (matches Pyodide); scikit-learn 1.9.1; pandas 3.0.6; FastAPI 0.142.2; Pydantic 2.13.5; PyMongo 4.18.2; Next.js 16.4.0; React 19.3.0; TypeScript 5.9.3; Node 22; openapi-typescript 7.13.0; ruff 0.16.10; mypy 2.4.0; pytest 9.1.1 | 2026-10-07 |
 | Deployed URLs (P2) | Backend https://proofnet-api.onrender.com (Render free, Singapore, auto-deploys from `main`); frontend https://proofnet.vercel.app (Vercel, root `apps/web`); Atlas M0 cluster `proofnet-dev`, prod DB `proofnet_prod`. `CORS_ORIGINS` must list the Vercel origin without a trailing slash (backend now tolerates one). | 2026-10-07 |
 | Render cold start after idle (first /health) | 52.5 s for the first request after >16 min idle; 0.2–0.3 s afterwards (Render free, Singapore) | 2026-10-07 |
-| Pyodide first load on phone (Wi-Fi / mobile data) | _TBD in P3_ | |
-| Benchmark score range (phones) | _TBD in P3_ | |
+| Pyodide first load on phone (Wi-Fi / mobile data) | _TBD: needs real phones._ Desktop Chromium reference (fast Wi-Fi, cold cache): runtime ready ≈ 3.4 s, idle ≈ 4.2 s total | 2026-10-07 |
+| Benchmark score range (phones) | _TBD: needs real phones._ Desktop references: CPython 3.12 ≈ 3.9–5.4e7 cells/s; Pyodide-in-Node ≈ 1.9e7; Pyodide in desktop Chromium ≈ 6.5–7.8e7 cells/s | 2026-10-07 |
 | Max observed Pyodide vs CPython discrepancy per kernel | gaussian_nb: 0.0 (exact); linear_ridge: 7.0e-15 normwise relative (Pyodide 314.0.7 / NumPy 2.4.6 under Node vs CPython 3.12 / NumPy 2.4.6; tolerances 1e-8 / 1e-6). Pyodide-in-Node bench_v1 ≈ 1.85e7 cells/s (desktop reference, not a phone). | 2026-10-07 |

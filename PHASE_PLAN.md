@@ -167,6 +167,8 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Gate.** Level 1 passes locally and deployed.
 
+**Status: COMPLETE (2026-10-07).** 131 tests pass (API tests against real MongoDB); deployed to Render (backend), Vercel (frontend), Atlas; `/health` reports DB ok; signup → upload → validate → create task works on the live stack; prepared `.npz` is byte-reproducible with matching SHA-256; reconciler marks devices offline after 20 s. Measured Render cold start: 52.5 s (see `CLAUDE.md` section 12).
+
 ---
 
 ## 6. P3 — Contributor runtime
@@ -199,6 +201,8 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 **Risks.** Pyodide load time on mobile; unsupported old phones; wake lock missing. *Mitigation:* preload on Wi-Fi, list minimum Chrome version, keep the screen on manually as backup.
 
 **Gate.** Level 2 on two real phones.
+
+**Status: IN PROGRESS.** Done and verified on desktop (headless Chromium, local and deployed): browser worker (pinned Pyodide module worker, SHA-256-verified kernel bundle, real `bench_v1`, session, heartbeat, wake lock request, identity in localStorage, offline in ~22 s when the tab leaves, same device on reopen), CPython CLI worker (`--count 3` verified), `/network`. Outstanding: the physical two-phone gate and recording phone numbers.
 
 ---
 
