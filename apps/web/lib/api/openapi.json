@@ -1,0 +1,2128 @@
+{
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "AssignmentPayload": {
+        "properties": {
+          "assignment_id": {
+            "pattern": "^asg_",
+            "title": "Assignment Id",
+            "type": "string"
+          },
+          "chunk_id": {
+            "pattern": "^chk_",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "deadline_at": {
+            "format": "date-time",
+            "title": "Deadline At",
+            "type": "string"
+          },
+          "input_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "input_url": {
+            "title": "Input Url",
+            "type": "string"
+          },
+          "kernel": {
+            "title": "Kernel",
+            "type": "string"
+          },
+          "kernel_version": {
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "n_features": {
+            "minimum": 1.0,
+            "title": "N Features",
+            "type": "integer"
+          },
+          "n_rows": {
+            "minimum": 1.0,
+            "title": "N Rows",
+            "type": "integer"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "task_id": {
+            "pattern": "^tsk_",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignment_id",
+          "task_id",
+          "chunk_id",
+          "kernel",
+          "kernel_version",
+          "params",
+          "input_url",
+          "input_sha256",
+          "n_rows",
+          "n_features",
+          "deadline_at"
+        ],
+        "title": "AssignmentPayload",
+        "type": "object"
+      },
+      "Benchmark": {
+        "properties": {
+          "bench_version": {
+            "title": "Bench Version",
+            "type": "string"
+          },
+          "score_cells_per_sec": {
+            "exclusiveMinimum": 0.0,
+            "title": "Score Cells Per Sec",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score_cells_per_sec",
+          "bench_version"
+        ],
+        "title": "Benchmark",
+        "type": "object"
+      },
+      "Body_upload_dataset_api_v1_datasets_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_dataset_api_v1_datasets_post",
+        "type": "object"
+      },
+      "CancelDirective": {
+        "properties": {
+          "assignment_id": {
+            "title": "Assignment Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "cancel",
+            "default": "cancel",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignment_id"
+        ],
+        "title": "CancelDirective",
+        "type": "object"
+      },
+      "DatasetOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "size_bytes",
+          "sha256",
+          "profile",
+          "created_at"
+        ],
+        "title": "DatasetOut",
+        "type": "object"
+      },
+      "DeviceCapabilities": {
+        "properties": {
+          "battery": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery"
+          },
+          "logical_cores": {
+            "anyOf": [
+              {
+                "maximum": 1024.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logical Cores"
+          },
+          "memory_gb_reported": {
+            "anyOf": [
+              {
+                "maximum": 1024.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Gb Reported"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "network_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Type"
+          },
+          "platform_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Version"
+          },
+          "storage_quota_mb": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Quota Mb"
+          }
+        },
+        "title": "DeviceCapabilities",
+        "type": "object"
+      },
+      "DeviceOut": {
+        "properties": {
+          "benchmark": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Benchmark"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/DeviceCapabilities"
+          },
+          "device_type": {
+            "$ref": "#/components/schemas/DeviceType"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "runtime": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Stats",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "device_type",
+          "status",
+          "capabilities",
+          "stats"
+        ],
+        "title": "DeviceOut",
+        "type": "object"
+      },
+      "DevicePatch": {
+        "properties": {
+          "disabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "DevicePatch",
+        "type": "object"
+      },
+      "DeviceRegisterRequest": {
+        "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/DeviceCapabilities",
+            "default": {}
+          },
+          "device_type": {
+            "$ref": "#/components/schemas/DeviceType",
+            "default": "other"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DeviceRegisterRequest",
+        "type": "object"
+      },
+      "DeviceRegistered": {
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/DeviceOut"
+          },
+          "device_token": {
+            "description": "Shown once; only its hash is stored.",
+            "title": "Device Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device",
+          "device_token"
+        ],
+        "title": "DeviceRegistered",
+        "type": "object"
+      },
+      "DeviceState": {
+        "enum": [
+          "initializing",
+          "idle",
+          "busy"
+        ],
+        "title": "DeviceState",
+        "type": "string"
+      },
+      "DeviceType": {
+        "enum": [
+          "android_phone",
+          "laptop",
+          "desktop",
+          "other"
+        ],
+        "title": "DeviceType",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "default": [],
+            "items": {},
+            "title": "Details",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ExecutionSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "max_devices": {
+            "default": 4,
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Max Devices",
+            "type": "integer"
+          },
+          "min_devices": {
+            "default": 1,
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Min Devices",
+            "type": "integer"
+          },
+          "start_policy": {
+            "$ref": "#/components/schemas/StartPolicy",
+            "default": "wait_for_min_devices"
+          }
+        },
+        "title": "ExecutionSettings",
+        "type": "object"
+      },
+      "FailRequest": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "FailRequest",
+        "type": "object"
+      },
+      "GaussianNBParams": {
+        "additionalProperties": false,
+        "properties": {
+          "feature_columns": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Feature Columns",
+            "type": "array"
+          },
+          "missing_values": {
+            "$ref": "#/components/schemas/MissingValuePolicy",
+            "default": "drop_rows"
+          },
+          "split_seed": {
+            "default": 42,
+            "title": "Split Seed",
+            "type": "integer"
+          },
+          "target_column": {
+            "minLength": 1,
+            "title": "Target Column",
+            "type": "string"
+          },
+          "test_fraction": {
+            "default": 0.2,
+            "maximum": 0.5,
+            "minimum": 0.05,
+            "title": "Test Fraction",
+            "type": "number"
+          },
+          "var_smoothing": {
+            "default": 1e-09,
+            "minimum": 0.0,
+            "title": "Var Smoothing",
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_column",
+          "feature_columns"
+        ],
+        "title": "GaussianNBParams",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HeartbeatRequest": {
+        "properties": {
+          "battery": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery"
+          },
+          "current_assignment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Assignment Id"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeviceState"
+          }
+        },
+        "required": [
+          "session_id",
+          "state"
+        ],
+        "title": "HeartbeatRequest",
+        "type": "object"
+      },
+      "HeartbeatResponse": {
+        "properties": {
+          "directives": {
+            "default": [],
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "cancel": "#/components/schemas/CancelDirective",
+                  "refresh_runtime": "#/components/schemas/RefreshRuntimeDirective",
+                  "reregister": "#/components/schemas/ReregisterDirective",
+                  "run": "#/components/schemas/RunDirective"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/RunDirective"
+                },
+                {
+                  "$ref": "#/components/schemas/CancelDirective"
+                },
+                {
+                  "$ref": "#/components/schemas/RefreshRuntimeDirective"
+                },
+                {
+                  "$ref": "#/components/schemas/ReregisterDirective"
+                }
+              ]
+            },
+            "title": "Directives",
+            "type": "array"
+          },
+          "next_heartbeat_ms": {
+            "minimum": 500.0,
+            "title": "Next Heartbeat Ms",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "next_heartbeat_ms"
+        ],
+        "title": "HeartbeatResponse",
+        "type": "object"
+      },
+      "LinearRidgeParams": {
+        "additionalProperties": false,
+        "properties": {
+          "alpha": {
+            "default": 1.0,
+            "minimum": 0.0,
+            "title": "Alpha",
+            "type": "number"
+          },
+          "feature_columns": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Feature Columns",
+            "type": "array"
+          },
+          "missing_values": {
+            "$ref": "#/components/schemas/MissingValuePolicy",
+            "default": "drop_rows"
+          },
+          "split_seed": {
+            "default": 42,
+            "title": "Split Seed",
+            "type": "integer"
+          },
+          "target_column": {
+            "minLength": 1,
+            "title": "Target Column",
+            "type": "string"
+          },
+          "test_fraction": {
+            "default": 0.2,
+            "maximum": 0.5,
+            "minimum": 0.05,
+            "title": "Test Fraction",
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_column",
+          "feature_columns"
+        ],
+        "title": "LinearRidgeParams",
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "MissingValuePolicy": {
+        "enum": [
+          "drop_rows",
+          "reject"
+        ],
+        "title": "MissingValuePolicy",
+        "type": "string"
+      },
+      "PartialResultEnvelope": {
+        "additionalProperties": false,
+        "description": "Worker result: JSON only, never pickle (D9).",
+        "properties": {
+          "input_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "kernel": {
+            "title": "Kernel",
+            "type": "string"
+          },
+          "kernel_version": {
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "n_rows": {
+            "minimum": 1.0,
+            "title": "N Rows",
+            "type": "integer"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "payload_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "runtime": {
+            "$ref": "#/components/schemas/RuntimeInfo"
+          },
+          "timings": {
+            "$ref": "#/components/schemas/ResultTimings"
+          }
+        },
+        "required": [
+          "kernel",
+          "kernel_version",
+          "input_sha256",
+          "n_rows",
+          "payload",
+          "payload_sha256",
+          "timings",
+          "runtime"
+        ],
+        "title": "PartialResultEnvelope",
+        "type": "object"
+      },
+      "RefreshRuntimeDirective": {
+        "properties": {
+          "kernel_version": {
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "type": {
+            "const": "refresh_runtime",
+            "default": "refresh_runtime",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kernel_version"
+        ],
+        "title": "RefreshRuntimeDirective",
+        "type": "object"
+      },
+      "ReregisterDirective": {
+        "properties": {
+          "type": {
+            "const": "reregister",
+            "default": "reregister",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "ReregisterDirective",
+        "type": "object"
+      },
+      "ResultTimings": {
+        "properties": {
+          "compute_ms": {
+            "minimum": 0.0,
+            "title": "Compute Ms",
+            "type": "number"
+          },
+          "download_ms": {
+            "minimum": 0.0,
+            "title": "Download Ms",
+            "type": "number"
+          },
+          "total_ms": {
+            "minimum": 0.0,
+            "title": "Total Ms",
+            "type": "number"
+          }
+        },
+        "required": [
+          "download_ms",
+          "compute_ms",
+          "total_ms"
+        ],
+        "title": "ResultTimings",
+        "type": "object"
+      },
+      "RunDirective": {
+        "properties": {
+          "assignment": {
+            "$ref": "#/components/schemas/AssignmentPayload"
+          },
+          "type": {
+            "const": "run",
+            "default": "run",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignment"
+        ],
+        "title": "RunDirective",
+        "type": "object"
+      },
+      "RuntimeInfo": {
+        "properties": {
+          "bundle": {
+            "title": "Bundle",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "pyodide",
+              "cpython"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "numpy": {
+            "title": "Numpy",
+            "type": "string"
+          },
+          "pyodide": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pyodide"
+          },
+          "python": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Python"
+          }
+        },
+        "required": [
+          "kind",
+          "numpy",
+          "bundle"
+        ],
+        "title": "RuntimeInfo",
+        "type": "object"
+      },
+      "RuntimeManifest": {
+        "properties": {
+          "heartbeat_busy_ms": {
+            "title": "Heartbeat Busy Ms",
+            "type": "integer"
+          },
+          "heartbeat_idle_ms": {
+            "title": "Heartbeat Idle Ms",
+            "type": "integer"
+          },
+          "kernel_bundle_sha256": {
+            "title": "Kernel Bundle Sha256",
+            "type": "string"
+          },
+          "kernel_bundle_version": {
+            "title": "Kernel Bundle Version",
+            "type": "string"
+          },
+          "numpy_version": {
+            "title": "Numpy Version",
+            "type": "string"
+          },
+          "offline_after_seconds": {
+            "title": "Offline After Seconds",
+            "type": "integer"
+          },
+          "pyodide_version": {
+            "title": "Pyodide Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pyodide_version",
+          "numpy_version",
+          "kernel_bundle_version",
+          "kernel_bundle_sha256",
+          "heartbeat_idle_ms",
+          "heartbeat_busy_ms",
+          "offline_after_seconds"
+        ],
+        "title": "RuntimeManifest",
+        "type": "object"
+      },
+      "SessionRequest": {
+        "properties": {
+          "benchmark": {
+            "$ref": "#/components/schemas/Benchmark"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/DeviceCapabilities",
+            "default": {}
+          },
+          "runtime": {
+            "$ref": "#/components/schemas/RuntimeInfo"
+          }
+        },
+        "required": [
+          "runtime",
+          "benchmark"
+        ],
+        "title": "SessionRequest",
+        "type": "object"
+      },
+      "SessionResponse": {
+        "properties": {
+          "heartbeat_busy_ms": {
+            "title": "Heartbeat Busy Ms",
+            "type": "integer"
+          },
+          "heartbeat_idle_ms": {
+            "title": "Heartbeat Idle Ms",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "heartbeat_idle_ms",
+          "heartbeat_busy_ms"
+        ],
+        "title": "SessionResponse",
+        "type": "object"
+      },
+      "SignupRequest": {
+        "properties": {
+          "display_name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "display_name"
+        ],
+        "title": "SignupRequest",
+        "type": "object"
+      },
+      "StartPolicy": {
+        "enum": [
+          "wait_for_min_devices"
+        ],
+        "title": "StartPolicy",
+        "type": "string"
+      },
+      "TaskManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "dataset_id": {
+            "pattern": "^ds_",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "execution": {
+            "$ref": "#/components/schemas/ExecutionSettings",
+            "default": {
+              "max_devices": 4,
+              "min_devices": 1,
+              "start_policy": "wait_for_min_devices"
+            }
+          },
+          "kernel_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GaussianNBParams"
+              },
+              {
+                "$ref": "#/components/schemas/LinearRidgeParams"
+              }
+            ],
+            "title": "Params"
+          },
+          "task_type": {
+            "$ref": "#/components/schemas/TaskType"
+          }
+        },
+        "required": [
+          "name",
+          "task_type",
+          "dataset_id",
+          "params"
+        ],
+        "title": "TaskManifest",
+        "type": "object"
+      },
+      "TaskOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "execution": {
+            "additionalProperties": true,
+            "title": "Execution",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kernel_version": {
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          },
+          "prepared": {
+            "additionalProperties": true,
+            "title": "Prepared",
+            "type": "object"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Status History",
+            "type": "array"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "title": "Validation",
+            "type": "object"
+          },
+          "verification_policy": {
+            "additionalProperties": true,
+            "title": "Verification Policy",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "task_type",
+          "kernel_version",
+          "dataset_id",
+          "params",
+          "execution",
+          "validation",
+          "prepared",
+          "status",
+          "status_history",
+          "verification_policy",
+          "created_at"
+        ],
+        "title": "TaskOut",
+        "type": "object"
+      },
+      "TaskType": {
+        "enum": [
+          "gaussian_nb_train",
+          "linear_ridge_train"
+        ],
+        "title": "TaskType",
+        "type": "string"
+      },
+      "TaskTypeInfo": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kernel_version": {
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "params_schema": {
+            "additionalProperties": true,
+            "title": "Params Schema",
+            "type": "object"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_type",
+          "kernel_version",
+          "description",
+          "params_schema"
+        ],
+        "title": "TaskTypeInfo",
+        "type": "object"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token"
+        ],
+        "title": "TokenResponse",
+        "type": "object"
+      },
+      "UserOut": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "roles"
+        ],
+        "title": "UserOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationResult": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "plan_preview": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Populated from P5 (device-aware planner).",
+            "title": "Plan Preview"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "errors",
+          "warnings",
+          "summary"
+        ],
+        "title": "ValidationResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "ProofNet API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/signup": {
+      "post": {
+        "operationId": "signup_api_v1_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Signup",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/datasets": {
+      "post": {
+        "operationId": "upload_dataset_api_v1_datasets_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_dataset_api_v1_datasets_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Dataset",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/api/v1/datasets/{dataset_id}": {
+      "get": {
+        "operationId": "get_dataset_api_v1_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Dataset",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/api/v1/devices": {
+      "post": {
+        "operationId": "register_device_api_v1_devices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistered"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Device",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/mine": {
+      "get": {
+        "operationId": "my_devices_api_v1_devices_mine_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceOut"
+                  },
+                  "title": "Response My Devices Api V1 Devices Mine Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Devices",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/{device_id}": {
+      "patch": {
+        "operationId": "patch_device_api_v1_devices__device_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Device",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Api V1 Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/v1/runtime/kernels/{version}": {
+      "get": {
+        "operationId": "kernel_bundle_api_v1_runtime_kernels__version__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Kernel Bundle",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/v1/runtime/manifest": {
+      "get": {
+        "operationId": "runtime_manifest_api_v1_runtime_manifest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeManifest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Runtime Manifest",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/v1/task-types": {
+      "get": {
+        "operationId": "task_types_api_v1_task_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskTypeInfo"
+                  },
+                  "title": "Response Task Types Api V1 Task Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Task Types",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "operationId": "list_tasks_api_v1_tasks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response List Tasks Api V1 Tasks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Tasks",
+        "tags": [
+          "tasks"
+        ]
+      },
+      "post": {
+        "operationId": "create_task_api_v1_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskManifest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/validate": {
+      "post": {
+        "operationId": "validate_task_api_v1_tasks_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskManifest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "get_task_api_v1_tasks__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/v1/worker/assignments/{assignment_id}/fail": {
+      "post": {
+        "operationId": "fail_assignment_api_v1_worker_assignments__assignment_id__fail_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assignment_id",
+            "required": true,
+            "schema": {
+              "title": "Assignment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        },
+        "summary": "Fail Assignment"
+      }
+    },
+    "/api/v1/worker/assignments/{assignment_id}/result": {
+      "post": {
+        "operationId": "submit_result_api_v1_worker_assignments__assignment_id__result_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assignment_id",
+            "required": true,
+            "schema": {
+              "title": "Assignment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartialResultEnvelope"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        },
+        "summary": "Submit Result"
+      }
+    },
+    "/api/v1/worker/heartbeat": {
+      "post": {
+        "operationId": "heartbeat_api_v1_worker_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartbeatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heartbeat",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/v1/worker/session": {
+      "post": {
+        "operationId": "start_session_api_v1_worker_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Session",
+        "tags": [
+          "worker"
+        ]
+      }
+    }
+  }
+}

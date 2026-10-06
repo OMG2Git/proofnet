@@ -1,0 +1,18 @@
+import Link from "next/link";
+
+export default function Home() {
+  return (
+    <main>
+      <h1>ProofNet</h1>
+      <p>Decentralized AI compute: submit a supported ML task and let contributor devices compute it.</p>
+      <p className="muted">
+        Research prototype. Results are unverified until Part 2; do not upload sensitive data.
+      </p>
+      <div className="row">
+        <Link href="/login">Sign in</Link>
+        <Link href="/signup">Create account</Link>
+        <Link href="/tasks">My tasks</Link>
+      </div>
+    </main>
+  );
+}
