@@ -1,3 +1,4 @@
+import { useMemo, useSyncExternalStore } from "react";
 import type { components } from "./schema";
 
 /** Types come from FastAPI OpenAPI (`npm run gen:api`); never hand-write API types. */
@@ -10,6 +11,15 @@ export type ValidationResult = S["ValidationResult"];
 export type UserOut = S["UserOut"];
 export type DeviceOut = S["DeviceOut"];
 export type ApiError = S["ApiError"];
+export type DeviceRegistered = S["DeviceRegistered"];
+export type DeviceRegisterRequest = S["DeviceRegisterRequest"];
+export type DeviceCapabilities = S["DeviceCapabilities"];
+export type NetworkSummary = S["NetworkSummary"];
+export type RuntimeManifest = S["RuntimeManifest"];
+export type SessionRequest = S["SessionRequest"];
+export type SessionResponse = S["SessionResponse"];
+export type HeartbeatRequest = S["HeartbeatRequest"];
+export type HeartbeatResponse = S["HeartbeatResponse"];
 
 const ENV_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const BASE_KEY = "proofnet.apiBase";
@@ -63,10 +73,10 @@ export class ApiRequestError extends Error {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; json?: unknown; form?: FormData } = {},
+  opts: { method?: string; json?: unknown; form?: FormData; token?: string } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {};
-  const token = getToken();
+  const token = opts.token ?? getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
   let body: BodyInit | undefined;
   if (opts.form) body = opts.form;
@@ -115,4 +125,83 @@ export const api = {
   createTask: (m: TaskManifest) => request<TaskOut>("/tasks", { method: "POST", json: m }),
   listTasks: () => request<TaskOut[]>("/tasks"),
   getTask: (id: string) => request<TaskOut>(`/tasks/${id}`),
+  registerDevice: (b: DeviceRegisterRequest) =>
+    request<DeviceRegistered>("/devices", { method: "POST", json: b }),
+  myDevices: () => request<DeviceOut[]>("/devices/mine"),
+  patchDevice: (id: string, b: S["DevicePatch"]) =>
+    request<DeviceOut>(`/devices/${id}`, { method: "PATCH", json: b }),
+  networkSummary: () => request<NetworkSummary>("/network/summary"),
 };
+
+/** Worker-side endpoints; authenticated with the device token, not the user JWT. */
+export function deviceApi(deviceToken: string) {
+  return {
+    manifest: () => request<RuntimeManifest>("/runtime/manifest", { token: deviceToken }),
+    session: (b: SessionRequest) =>
+      request<SessionResponse>("/worker/session", { method: "POST", json: b, token: deviceToken }),
+    heartbeat: (b: HeartbeatRequest) =>
+      request<HeartbeatResponse>("/worker/heartbeat", {
+        method: "POST",
+        json: b,
+        token: deviceToken,
+      }),
+  };
+}
+
+const DEVICE_KEY = "proofnet.device";
+
+export type StoredDevice = { apiBase: string; deviceId: string; deviceToken: string; name: string };
+
+const DEVICE_EVENT = "proofnet-device-change";
+
+function parseDevice(raw: string | null): StoredDevice | null {
+  if (!raw) return null;
+  try {
+    const d = JSON.parse(raw) as StoredDevice;
+    return d.apiBase === getApiBase() ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Device identity lives in localStorage, per API base (ARCHITECTURE 3.5). */
+export function getStoredDevice(): StoredDevice | null {
+  try {
+    return parseDevice(window.localStorage.getItem(DEVICE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredDevice(d: StoredDevice | null): void {
+  try {
+    if (d) window.localStorage.setItem(DEVICE_KEY, JSON.stringify(d));
+    else window.localStorage.removeItem(DEVICE_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+  window.dispatchEvent(new Event(DEVICE_EVENT));
+}
+
+function subscribeDevice(cb: () => void): () => void {
+  window.addEventListener(DEVICE_EVENT, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(DEVICE_EVENT, cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
+function rawDevice(): string | null {
+  try {
+    return window.localStorage.getItem(DEVICE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** React hook: the stored device identity (null on the server and when absent). */
+export function useStoredDevice(): StoredDevice | null {
+  const raw = useSyncExternalStore(subscribeDevice, rawDevice, () => null);
+  return useMemo(() => parseDevice(raw), [raw]);
+}

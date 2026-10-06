@@ -21,6 +21,7 @@ from .datasets.routes import router as datasets_router
 from .db import Db, connect
 from .devices.routes import router as devices_router
 from .errors import install_error_handlers
+from .network.routes import router as network_router
 from .tasks.routes import router as tasks_router
 from .worker_gateway.routes import router as worker_router
 from .worker_gateway.runtime import build_bundle
@@ -72,7 +73,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await db.client.admin.command("ping")
         return {"status": "ok", "db": "ok"}
 
-    for r in (auth_router, devices_router, worker_router, datasets_router, tasks_router):
+    for r in (
+        auth_router,
+        devices_router,
+        worker_router,
+        datasets_router,
+        tasks_router,
+        network_router,
+    ):
         api.include_router(r)
 
     # Worker result intake arrives in P4; the stubs keep the contract in OpenAPI.

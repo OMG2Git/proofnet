@@ -24,6 +24,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <strong>ProofNet</strong>
         <Link href="/tasks">My tasks</Link>
         <Link href="/tasks/new">New task</Link>
+        <Link href="/contribute">Contribute</Link>
+        <Link href="/network">Network</Link>
         <span className="spacer" />
         <span className="muted">{user.display_name}</span>
         <button

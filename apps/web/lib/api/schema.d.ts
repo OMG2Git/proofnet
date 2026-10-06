@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/network/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Network Summary */
+        get: operations["network_summary_api_v1_network_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runtime/kernels/{version}": {
         parameters: {
             query?: never;
@@ -606,6 +623,40 @@ export interface components {
          * @enum {string}
          */
         MissingValuePolicy: "drop_rows" | "reject";
+        /** NetworkDevice */
+        NetworkDevice: {
+            /** Current Assignment Id */
+            current_assignment_id?: string | null;
+            device_type: components["schemas"]["DeviceType"];
+            /** Id */
+            id: string;
+            /** Last Seen Age Seconds */
+            last_seen_age_seconds?: number | null;
+            /** Name */
+            name: string;
+            /** Runtime Kind */
+            runtime_kind?: string | null;
+            /** Score Cells Per Sec */
+            score_cells_per_sec?: number | null;
+            /** Status */
+            status: string;
+        };
+        /** NetworkSummary */
+        NetworkSummary: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Devices */
+            devices: components["schemas"]["NetworkDevice"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** Tasks Running */
+            tasks_running: number;
+        };
         /**
          * PartialResultEnvelope
          * @description Worker result: JSON only, never pickle (D9).
@@ -1145,6 +1196,26 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    network_summary_api_v1_network_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkSummary"];
                 };
             };
         };

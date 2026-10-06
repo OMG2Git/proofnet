@@ -720,6 +720,112 @@
         "title": "MissingValuePolicy",
         "type": "string"
       },
+      "NetworkDevice": {
+        "properties": {
+          "current_assignment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Assignment Id"
+          },
+          "device_type": {
+            "$ref": "#/components/schemas/DeviceType"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_age_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Age Seconds"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "runtime_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Kind"
+          },
+          "score_cells_per_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cells Per Sec"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "device_type",
+          "status"
+        ],
+        "title": "NetworkDevice",
+        "type": "object"
+      },
+      "NetworkSummary": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/NetworkDevice"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "tasks_running": {
+            "title": "Tasks Running",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "server_time",
+          "counts",
+          "devices",
+          "tasks_running"
+        ],
+        "title": "NetworkSummary",
+        "type": "object"
+      },
       "PartialResultEnvelope": {
         "additionalProperties": false,
         "description": "Worker result: JSON only, never pickle (D9).",
@@ -1693,6 +1799,27 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/api/v1/network/summary": {
+      "get": {
+        "operationId": "network_summary_api_v1_network_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Network Summary",
+        "tags": [
+          "network"
+        ]
       }
     },
     "/api/v1/runtime/kernels/{version}": {

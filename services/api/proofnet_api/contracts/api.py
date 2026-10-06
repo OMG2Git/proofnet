@@ -147,3 +147,21 @@ class TaskOut(BaseModel):
     error: str | None = None
     verification_policy: dict[str, Any]
     created_at: datetime
+
+
+class NetworkDevice(BaseModel):
+    id: str
+    name: str
+    device_type: DeviceType
+    status: str
+    score_cells_per_sec: float | None = None
+    runtime_kind: str | None = None
+    last_seen_age_seconds: float | None = None
+    current_assignment_id: str | None = None
+
+
+class NetworkSummary(BaseModel):
+    server_time: datetime
+    counts: dict[str, int]
+    devices: list[NetworkDevice]
+    tasks_running: int

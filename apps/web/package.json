@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
-    "gen:api": "openapi-typescript lib/api/openapi.json -o lib/api/schema.d.ts"
+    "gen:api": "openapi-typescript lib/api/openapi.json -o lib/api/schema.d.ts",
+    "build:worker": "esbuild worker-runtime/compute.worker.ts --bundle --format=esm --target=es2022 --outfile=public/compute.worker.js",
+    "predev": "npm run build:worker",
+    "prebuild": "npm run build:worker"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -20,6 +23,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.4.0",
     "openapi-typescript": "7.13.0",
