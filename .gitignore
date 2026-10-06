@@ -12,4 +12,4 @@ datasets/generated/
 *.egg-info/
 dist/
 packages/kernels/pyodide-parity/last_discrepancy.json
-public/compute.worker.js
+apps/web/public/compute.worker.js
