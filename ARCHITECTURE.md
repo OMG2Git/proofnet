@@ -690,7 +690,7 @@ stateDiagram-v2
 | Device offline before task | stale heartbeat | Not eligible; task waits per `start_policy` |
 | Device offline during chunk | no heartbeat 20 s (reconciler) | Assignment `expired`, device `offline`, chunk → `pending` with device in `excluded_device_ids`, reassigned |
 | Chunk execution error | worker `POST …/fail` | Assignment `failed`; retry on a different device if possible |
-| Timeout | `deadline_at = assigned_at + clamp(4 × estimated_seconds, 60 s, 600 s)` | Assignment `expired`; retry |
+| Timeout | `deadline_at = assigned_at + clamp(4 × estimated_seconds + input_bytes / MIN_BANDWIDTH, 60 s, 600 s)` with `MIN_BANDWIDTH = 50 KB/s` | Assignment `expired`; retry |
 | Malformed / invalid output | structural validation fails | Assignment `rejected`, device `invalid_results += 1` (first Part 2 signal), retry elsewhere |
 | Duplicate result (same assignment) | assignment already `succeeded` | `200` with no state change (idempotent) |
 | Late result (expired/cancelled assignment) | assignment not `running` | `409`; stored as a `late_result` event with its payload digest (useful for Part 2), never merged |
@@ -699,9 +699,13 @@ stateDiagram-v2
 | No devices for too long | queued > `QUEUE_TIMEOUT` (10 min) | Task `failed` ("no eligible devices") |
 | Task runs too long | running > `TASK_TIMEOUT` (15 min) | Task `failed` |
 | Backend restart | — | All state in MongoDB; reconciler resumes: expires stale leases, re-runs stuck aggregation |
+| Worker restarts mid-chunk (page reload) | `POST /worker/session` while an assignment is `running` | Assignment `expired` (`SESSION_RESTARTED`); chunk retried. An assignment that was only `assigned` is simply re-dispatched to the new session |
+| Nobody else can take a retried chunk | chunk pending longer than `EXCLUSION_RELAX` (15 s) with no eligible non-excluded device | An excluded device may retry it (still bounded by `max_attempts`) |
 | Backend sleeping (free host) | first request is slow | Workers retry with backoff; dashboard shows "connecting"; demo runbook pre-warms |
 
 All retry/timeout constants live in one config module.
+
+**Design notes (P6).** (1) The deadline includes a *transfer allowance* because on phones the chunk download, not the compute, dominates: a real run needed 110 s to download a 10.9 MB chunk on weak 5G, which a compute-only deadline (60 s floor) would have expired. (2) `excluded_device_ids` is a preference, not a hard rule: it is honoured while another eligible device exists, and relaxed after `EXCLUSION_RELAX` so that a single-device deployment still retries (the three-attempt bound still ends a task whose chunk always fails). (3) `cancel` directives are derived, not stored: when a worker's heartbeat reports a `current_assignment_id` whose assignment is `cancelled`/`expired`/`failed`/`rejected`, the response carries `cancel {assignment_id}`; the browser worker terminates its Web Worker and starts a fresh one.
 
 ---
 

@@ -316,6 +316,8 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Gate.** Level 7 scenario suite green.
 
+**Status: IMPLEMENTED; phone scenarios pending.** Done: reconciler expiry of deadlines and offline devices (assignment `expired` → chunk `pending` with `excluded_device_ids`, max 3 attempts, task failed with a reason when exhausted), queue and task timeouts, cancel (`POST /tasks/{id}/cancel`, assignments cancelled, `cancel` directive, browser worker terminates and restarts its Web Worker), session-restart handling, resume of stuck aggregation (stale claims released), CLI fault injection (`--fail-rate`, `--delay-ms`, `--die-after-start`, `--corrupt-result`, `--late-result-ms`), failure messages in the event feed and a Cancel button. Automated scenarios: worker dies mid-chunk, corrupt payload, always-failing worker (3 attempts → task failed, no partial aggregation), late result (409, event logged, never merged), duplicate result, user cancel (and cancel of a queued task), backend restart mid-task, stuck aggregation, no devices → queue timeout, task timeout (slow worker told to stop), deadline expiry, session restart mid-chunk, unstarted assignment re-dispatch. Design changes recorded in ARCHITECTURE §11 (deadline transfer allowance, exclusion relaxation, derived cancel directive). Outstanding: phone scenarios and CI green.
+
 ---
 
 ## 10. P7 — ★ M3: Demo hardening & MVP freeze
