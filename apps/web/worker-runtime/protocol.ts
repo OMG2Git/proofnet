@@ -9,7 +9,15 @@ export type WorkerInit = {
   kernelBundleSha256: string;
 };
 
-export type ToWorker = WorkerInit | { type: "bench" };
+export type RunMessage = {
+  type: "run";
+  kernel: string;
+  params: Record<string, unknown>;
+  /** Chunk input .npz bytes (X, y); transferred, never pickled. */
+  input: ArrayBuffer;
+};
+
+export type ToWorker = WorkerInit | { type: "bench" } | RunMessage;
 
 export type RuntimeFingerprint = {
   kind: "pyodide";
@@ -29,4 +37,5 @@ export type FromWorker =
   | { type: "progress"; stage: string; detail?: string }
   | { type: "ready"; runtime: RuntimeFingerprint }
   | { type: "bench"; result: BenchResult }
+  | { type: "result"; payloadJson: string; payloadSha256: string; computeMs: number }
   | { type: "error"; message: string };

@@ -165,3 +165,71 @@ class NetworkSummary(BaseModel):
     counts: dict[str, int]
     devices: list[NetworkDevice]
     tasks_running: int
+
+
+class ChunkOut(BaseModel):
+    id: str
+    index: int
+    role: str
+    row_start: int
+    row_end: int
+    n_rows: int
+    status: str
+    attempt_count: int
+    max_attempts: int
+    preferred_device_id: str | None = None
+    accepted_assignment_id: str | None = None
+
+
+class AssignmentOut(BaseModel):
+    id: str
+    chunk_id: str
+    device_id: str
+    device_name: str | None = None
+    attempt_no: int
+    purpose: str
+    status: str
+    assigned_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    deadline_at: datetime
+    timings: dict[str, float] | None = None
+    runtime_fingerprint: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
+
+
+class ArtifactOut(BaseModel):
+    id: str
+    task_id: str
+    kind: str
+    filename: str
+    size_bytes: int
+    sha256: str
+    created_at: datetime
+
+
+class TaskStatus(BaseModel):
+    """Compact live snapshot for the task monitor (real state only)."""
+
+    server_time: datetime
+    task: TaskOut
+    chunks: list[ChunkOut]
+    assignments: list[AssignmentOut]
+    artifacts: list[ArtifactOut]
+
+
+class EventOut(BaseModel):
+    id: str
+    ts: datetime
+    type: str
+    task_id: str | None = None
+    device_id: str | None = None
+    chunk_id: str | None = None
+    assignment_id: str | None = None
+    data: dict[str, Any]
+
+
+class ResultAck(BaseModel):
+    assignment_id: str
+    status: str
+    acceptance: str | None = None

@@ -2,9 +2,11 @@
 
 Register (user JWT) -> fetch manifest + kernel bundle, verify SHA-256 -> run bench_v1 (the real
 kernel code) -> POST /worker/session -> heartbeat loop (2 s idle / 5 s busy).
-Dispatch (run/cancel directives) arrives in P4; fault injection flags arrive in P6.
+On a `run` directive it executes the assignment with the real core kernel (start -> download ->
+verify -> map -> result). Fault injection flags arrive in P6.
 """
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -20,7 +22,8 @@ from typing import Any
 import httpx
 import numpy as np
 
-from proofnet_kernels.core import bench
+from proofnet_kernels.core import bench, gaussian_nb, linear_ridge
+from proofnet_kernels.core.serialize import payload_sha256
 
 log = logging.getLogger("cli_worker")
 BUNDLE_VERSION = "1"
@@ -191,9 +194,76 @@ class Worker:
             if d["type"] == "reregister":
                 log.warning("[%s] server asked to re-register; starting a new session", self.name)
                 self.start_session(self.load_runtime())
+            elif d["type"] == "run":
+                self.execute(d["assignment"])
             else:
-                log.info("[%s] directive %s ignored (dispatch arrives in P4)", self.name, d["type"])
+                log.info("[%s] directive %s not handled yet", self.name, d["type"])
         return body
+
+    # ---- assignment execution (ARCHITECTURE 8.3) ----
+    def execute(self, a: dict[str, Any]) -> None:
+        asg_id = a["assignment_id"]
+        base = f"/worker/assignments/{asg_id}"
+        self.state_name = "busy"
+        t_total = time.perf_counter()
+        try:
+            _json(self.http.post(f"{base}/start", headers=self._dev()))
+            t0 = time.perf_counter()
+            r = self.http.get(a["input_url"], headers=self._dev())
+            if r.status_code != 200:
+                raise WorkerError(f"input download failed: {r.status_code}")
+            download_ms = (time.perf_counter() - t0) * 1000
+            if hashlib.sha256(r.content).hexdigest() != a["input_sha256"]:
+                raise WorkerError("input SHA-256 mismatch")
+            with np.load(BytesIO(r.content), allow_pickle=False) as z:  # never pickle
+                x, y = z["X"], z["y"]
+            if x.shape != (a["n_rows"], a["n_features"]):
+                raise WorkerError(f"unexpected input shape {x.shape}")
+            t1 = time.perf_counter()
+            if a["kernel"] == "gaussian_nb_train":
+                payload = gaussian_nb.map(x, y, int(a["params"]["n_classes"]))
+            elif a["kernel"] == "linear_ridge_train":
+                payload = linear_ridge.map(x, y)
+            else:
+                raise WorkerError(f"unknown kernel {a['kernel']}")
+            compute_ms = (time.perf_counter() - t1) * 1000
+            body = {
+                "kernel": a["kernel"],
+                "kernel_version": a["kernel_version"],
+                "input_sha256": a["input_sha256"],
+                "n_rows": a["n_rows"],
+                "payload": payload,
+                "payload_sha256": payload_sha256(payload),
+                "timings": {
+                    "download_ms": download_ms,
+                    "compute_ms": compute_ms,
+                    "total_ms": (time.perf_counter() - t_total) * 1000,
+                },
+                "runtime": {
+                    "kind": "cpython",
+                    "python": platform.python_version(),
+                    "numpy": np.__version__,
+                    "bundle": BUNDLE_VERSION,
+                },
+            }
+            _json(self.http.post(f"{base}/result", headers=self._dev(), json=body))
+            log.info(
+                "[%s] assignment %s done (%d rows, %.0f ms)",
+                self.name,
+                asg_id,
+                a["n_rows"],
+                compute_ms,
+            )
+        except (WorkerError, httpx.TransportError, ValueError, KeyError) as e:
+            log.error("[%s] assignment %s failed: %s", self.name, asg_id, e)
+            with contextlib.suppress(httpx.TransportError):
+                self.http.post(
+                    f"{base}/fail",
+                    headers=self._dev(),
+                    json={"code": "EXECUTION_ERROR", "message": str(e)[:500]},
+                )
+        finally:
+            self.state_name = "idle"
 
     # ---- main loop ----
     def run(self, max_seconds: float | None = None) -> None:

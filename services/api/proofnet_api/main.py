@@ -3,35 +3,25 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from . import reconciler
 from .auth.routes import router as auth_router
 from .config import Settings, get_settings
-from .contracts import (
-    ApiError,
-    ErrorBody,
-    FailRequest,
-    PartialResultEnvelope,
-)
+from .contracts import ApiError
 from .datasets.routes import router as datasets_router
 from .db import Db, connect
 from .devices.routes import router as devices_router
 from .errors import install_error_handlers
 from .network.routes import router as network_router
+from .tasks.monitor import router as monitor_router
 from .tasks.routes import router as tasks_router
+from .worker_gateway.assignments import router as assignments_router
 from .worker_gateway.routes import router as worker_router
 from .worker_gateway.runtime import build_bundle
-
-_NOT_IMPLEMENTED: dict[int | str, dict[str, object]] = {501: {"model": ApiError}}
-
-
-def _stub() -> JSONResponse:
-    body = ApiError(error=ErrorBody(code="NOT_IMPLEMENTED", message="Implemented in P4"))
-    return JSONResponse(status_code=501, content=body.model_dump())
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -56,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.background = set()
     app.state.bundle = build_bundle()
     app.add_middleware(
         CORSMiddleware,
@@ -65,7 +56,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     install_error_handlers(app)
 
-    api = APIRouter(prefix="/api/v1")
+    error_models: dict[int | str, dict[str, Any]] = {
+        code: {"model": ApiError} for code in (401, 403, 404, 409, 413, 422)
+    }
+    api = APIRouter(prefix="/api/v1", responses=error_models)
 
     @api.get("/health")
     async def health() -> dict[str, str]:
@@ -80,17 +74,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         datasets_router,
         tasks_router,
         network_router,
+        assignments_router,
+        monitor_router,
     ):
         api.include_router(r)
-
-    # Worker result intake arrives in P4; the stubs keep the contract in OpenAPI.
-    @api.post("/worker/assignments/{assignment_id}/result", responses=_NOT_IMPLEMENTED)
-    async def submit_result(assignment_id: str, body: PartialResultEnvelope) -> JSONResponse:
-        return _stub()
-
-    @api.post("/worker/assignments/{assignment_id}/fail", responses=_NOT_IMPLEMENTED)
-    async def fail_assignment(assignment_id: str, body: FailRequest) -> JSONResponse:
-        return _stub()
 
     app.include_router(api)
     return app

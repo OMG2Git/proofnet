@@ -1,9 +1,9 @@
-"""Prefixed readable IDs (ARCHITECTURE 12): usr_, dev_, ds_, tsk_, chk_, asg_, pr_, art_, evt_."""
+"""Prefixed readable IDs (ARCHITECTURE 12). pr_ = partial result; ses_ = worker session."""
 
 import secrets
 import time
 
-PREFIXES = {"usr", "dev", "ds", "tsk", "chk", "asg", "pr", "art", "evt"}
+PREFIXES = {"usr", "dev", "ds", "tsk", "chk", "asg", "pr", "art", "evt", "ses"}
 _ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"  # Crockford base32 (lowercase)
 
 

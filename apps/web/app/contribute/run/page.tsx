@@ -14,6 +14,8 @@ const INITIAL: ControllerSnapshot = {
   sessionId: null,
   lastHeartbeatAt: null,
   heartbeats: 0,
+  currentAssignmentId: null,
+  completed: 0,
   wakeLock: "unsupported",
   connection: "ok",
   timings: { runtimeLoadMs: null, benchMs: null },
@@ -113,6 +115,12 @@ function Console() {
               <th>Heartbeat</th>
               <td data-testid="heartbeat">
                 {snap.heartbeats} sent{hbAge !== null && `, last ${hbAge}s ago`} · connection {snap.connection}
+              </td>
+            </tr>
+            <tr>
+              <th>Work</th>
+              <td data-testid="work">
+                {snap.currentAssignmentId ? `running ${snap.currentAssignmentId}` : "none"} · {snap.completed} completed
               </td>
             </tr>
             <tr>

@@ -39,7 +39,9 @@ function TaskList() {
           <tbody>
             {tasks.map((t) => (
               <tr key={t.id}>
-                <td>{t.name}</td>
+                <td>
+                  <Link href={`/tasks/${t.id}`}>{t.name}</Link>
+                </td>
                 <td>{t.task_type}</td>
                 <td>
                   <span className={`badge ${t.status}`}>{t.status}</span>

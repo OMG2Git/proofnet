@@ -239,6 +239,8 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Gate.** M1 acceptance passes.
 
+**Status: IMPLEMENTED; real-phone gate pending.** Done: single-chunk planner behind `ChunkPlanner`, `DeviceEligibilityPolicy`/`AssignmentPolicy`/`VerificationHook` interfaces, scheduler with conditional atomic transitions, `run` directive on heartbeat, `/start`, `/input`, `/result`, `/fail` with the ARCHITECTURE 9.2 intake pipeline (structural validation, payload digest, idempotent duplicates, 409 late results, rejected results counted), aggregator (coverage check, merge, finalize, holdout metrics, reference check, artifacts incl. report with timings/device/runtime), task monitor UI, CLI and browser workers. Outstanding: three consecutive successful runs on a real phone (deployed).
+
 ---
 
 ## 8. P5 — ★ M2: Multi-device, device-aware execution

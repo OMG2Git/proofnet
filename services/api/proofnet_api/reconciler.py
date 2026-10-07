@@ -1,4 +1,4 @@
-"""Idempotent maintenance loop (ARCHITECTURE 3.3, 11). P2 scope: mark stale devices offline.
+"""Idempotent maintenance loop (ARCHITECTURE 3.3, 11): offline marking, scheduling, aggregation.
 
 Every pass is safe to re-run: transitions are conditional updates guarded by status and
 last_seen_at, so a repeat (or a concurrent heartbeat) cannot apply one twice.
@@ -8,9 +8,11 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
+from .aggregation.service import aggregate_task, release_stale_claims
 from .config import Settings
 from .db import Db, utcnow
 from .events import emit
+from .scheduling.scheduler import schedule_pass
 
 log = logging.getLogger("proofnet.reconciler")
 
@@ -34,9 +36,18 @@ async def mark_offline_devices(db: Db, settings: Settings, now: datetime | None 
     return count
 
 
+async def resume_aggregations(db: Db) -> None:
+    """Re-run aggregation that stalled (e.g. the backend restarted mid-aggregation)."""
+    await release_stale_claims(db)
+    async for t in db.col("tasks").find({"status": "aggregating", "aggregation_claimed_at": None}):
+        await aggregate_task(db, t["_id"])
+
+
 async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> None:
     await mark_offline_devices(db, settings, now)
-    # P6 adds: lease expiry, retries, timeouts, stuck aggregation.
+    await schedule_pass(db, settings)
+    await resume_aggregations(db)
+    # P6 adds: lease/deadline expiry, retries, queue/task timeouts.
 
 
 async def run_forever(db: Db, settings: Settings) -> None:

@@ -98,8 +98,8 @@ function Wizard() {
     try {
       if (kind === "validate") setReport(await api.validateTask(m));
       else {
-        await api.createTask(m);
-        router.push("/tasks");
+        const t = await api.createTask(m);
+        router.push(`/tasks/${t.id}`);
       }
     } catch (e) {
       if (e instanceof ApiRequestError) {

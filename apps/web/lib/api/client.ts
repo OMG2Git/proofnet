@@ -20,6 +20,11 @@ export type SessionRequest = S["SessionRequest"];
 export type SessionResponse = S["SessionResponse"];
 export type HeartbeatRequest = S["HeartbeatRequest"];
 export type HeartbeatResponse = S["HeartbeatResponse"];
+export type AssignmentPayload = S["AssignmentPayload"];
+export type ResultAck = S["ResultAck"];
+export type TaskStatus = S["TaskStatus"];
+export type ArtifactOut = S["ArtifactOut"];
+export type EventOut = S["EventOut"];
 
 const ENV_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const BASE_KEY = "proofnet.apiBase";
@@ -73,14 +78,17 @@ export class ApiRequestError extends Error {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; json?: unknown; form?: FormData; token?: string } = {},
+  opts: { method?: string; json?: unknown; form?: FormData; raw?: string; token?: string } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {};
   const token = opts.token ?? getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
   let body: BodyInit | undefined;
   if (opts.form) body = opts.form;
-  else if (opts.json !== undefined) {
+  else if (opts.raw !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = opts.raw; // exact JSON text (preserves e.g. 0.0 vs 0 for payload digests)
+  } else if (opts.json !== undefined) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(opts.json);
   }
@@ -125,6 +133,17 @@ export const api = {
   createTask: (m: TaskManifest) => request<TaskOut>("/tasks", { method: "POST", json: m }),
   listTasks: () => request<TaskOut[]>("/tasks"),
   getTask: (id: string) => request<TaskOut>(`/tasks/${id}`),
+  taskStatus: (id: string) => request<TaskStatus>(`/tasks/${id}/status`),
+  taskEvents: (id: string) => request<EventOut[]>(`/tasks/${id}/events`),
+  /** Authenticated download (artifacts are owner-only). */
+  downloadArtifact: async (a: ArtifactOut): Promise<Blob> => {
+    const token = getToken();
+    const res = await fetch(`${getApiBase()}/artifacts/${a.id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new ApiRequestError(res.status, "DOWNLOAD", `download failed (${res.status})`);
+    return await res.blob();
+  },
   registerDevice: (b: DeviceRegisterRequest) =>
     request<DeviceRegistered>("/devices", { method: "POST", json: b }),
   myDevices: () => request<DeviceOut[]>("/devices/mine"),
@@ -145,6 +164,28 @@ export function deviceApi(deviceToken: string) {
         json: b,
         token: deviceToken,
       }),
+    startAssignment: (id: string) =>
+      request<ResultAck>(`/worker/assignments/${id}/start`, { method: "POST", token: deviceToken }),
+    postResult: (id: string, rawJson: string) =>
+      request<ResultAck>(`/worker/assignments/${id}/result`, {
+        method: "POST",
+        raw: rawJson,
+        token: deviceToken,
+      }),
+    failAssignment: (id: string, code: string, message: string) =>
+      request<ResultAck>(`/worker/assignments/${id}/fail`, {
+        method: "POST",
+        json: { code, message },
+        token: deviceToken,
+      }),
+    /** Chunk input .npz bytes. */
+    downloadInput: async (inputUrl: string): Promise<ArrayBuffer> => {
+      const res = await fetch(`${getApiBase()}${inputUrl}`, {
+        headers: { Authorization: `Bearer ${deviceToken}` },
+      });
+      if (!res.ok) throw new ApiRequestError(res.status, "DOWNLOAD", `input download failed (${res.status})`);
+      return await res.arrayBuffer();
+    },
   };
 }
 

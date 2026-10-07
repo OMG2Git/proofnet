@@ -41,7 +41,7 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
 6. Part 2 only after M3 (offline research may run in parallel).
 
-Current phase: **P4 (M1)** — P0–P3 completed 2026-10-07. P3 gate (Level 2) passed on two real Android phones (OPPO F31 Pro+ 5G and vivo Y22): different realistic benchmark scores, identity persists, backgrounded phone goes offline and recovers as the same device. Update this line as phases complete.
+Current phase: **P4 (M1)** — P0–P3 completed 2026-10-07. P4 implemented and verified with the CLI worker (automated E2E, 139 tests) and with the browser worker in headless Chromium (UI wizard → Pyodide compute → aggregation → reference check PASSED → artifacts; downloaded `model.joblib` predicts identically to centralized sklearn, parameter diff 0.0). **Remaining for the M1 gate: three consecutive runs on a real Android phone on the deployed stack.** Update this line as phases complete.
 
 ---
 

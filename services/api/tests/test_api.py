@@ -265,7 +265,7 @@ def test_create_task_prepares_npz_with_matching_sha(
     assert client.get(f"{V1}/tasks", headers=user_headers).json()[0]["id"] == t["id"]
     assert client.get(f"{V1}/tasks/{t['id']}", headers=user_headers).status_code == 200
     assert client.get(f"{V1}/tasks/{t['id']}", headers=signup(client)).status_code == 404
-    assert mdb["events"].count_documents({"task_id": t["id"]}) == 1
+    assert mdb["events"].count_documents({"task_id": t["id"], "type": "task_created"}) == 1
 
 
 def test_create_task_rejects_invalid(client: TestClient, user_headers: dict[str, str]) -> None:

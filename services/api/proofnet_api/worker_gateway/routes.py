@@ -1,14 +1,15 @@
-"""Worker gateway. P2: runtime manifest/bundle, session, heartbeat (no dispatch yet)."""
+"""Worker gateway: runtime manifest/bundle, session, heartbeat (+ run directive)."""
 
 from fastapi import APIRouter, Request, Response
 
-from ..contracts import HeartbeatRequest, HeartbeatResponse
+from ..contracts import Directive, HeartbeatRequest, HeartbeatResponse
 from ..contracts.api import RuntimeManifest, SessionRequest, SessionResponse
 from ..db import utcnow
 from ..deps import DbDep, DeviceDep, SettingsDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from .assignments import run_directive_for
 from .runtime import NUMPY_VERSION, PYODIDE_VERSION, KernelBundle
 
 router = APIRouter(tags=["worker"])
@@ -49,7 +50,7 @@ async def start_session(
 ) -> SessionResponse:
     if device["status"] == "disabled":
         raise ProofNetError(403, "DEVICE_DISABLED", "This device has been disabled by its owner")
-    session_id = new_id("pr")  # opaque session id
+    session_id = new_id("ses")
     caps = {**device.get("capabilities", {}), **body.capabilities.model_dump(exclude_none=True)}
     await db.col("devices").update_one(
         {"_id": device["_id"], "status": {"$ne": "disabled"}},
@@ -93,10 +94,11 @@ async def heartbeat(
     update: dict[str, object] = {"last_seen_at": now}
     if body.battery is not None:
         update["capabilities.battery"] = body.battery
-    # offline -> idle recovery is conditional so concurrent heartbeats apply it once
+    # offline -> idle/busy recovery is conditional so concurrent heartbeats apply it once
+    back = "busy" if device.get("current_assignment_id") else "idle"
     recovered = await db.col("devices").update_one(
         {"_id": device["_id"], "session_id": body.session_id, "status": "offline"},
-        {"$set": {**update, "status": "idle"}},
+        {"$set": {**update, "status": back}},
     )
     if recovered.modified_count:
         await emit(db, "device_online", device_id=device["_id"])
@@ -104,9 +106,13 @@ async def heartbeat(
         await db.col("devices").update_one(
             {"_id": device["_id"], "session_id": body.session_id}, {"$set": update}
         )
+    directives: list[Directive] = []
+    run = await run_directive_for(db, device)
+    if run is not None:
+        directives.append(run)
     busy = device["status"] == "busy"
     return HeartbeatResponse(
         server_time=now,
         next_heartbeat_ms=settings.heartbeat_busy_ms if busy else settings.heartbeat_idle_ms,
-        directives=[],
+        directives=directives,
     )

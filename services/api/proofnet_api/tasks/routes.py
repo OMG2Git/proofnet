@@ -4,19 +4,21 @@ import asyncio
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from proofnet_kernels.server.common import KernelValidationError
 from proofnet_kernels.server.registry import Kernel, get_kernel
 
+from ..background import kick_scheduler
 from ..contracts import TaskManifest
 from ..contracts.api import TaskOut, TaskTypeInfo, ValidationResult
 from ..datasets.routes import load_dataset_frame
 from ..db import Db, utcnow
-from ..deps import DbDep, UserDep
+from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from .prepared import prime_prepared
 
 router = APIRouter(tags=["tasks"])
 
@@ -83,7 +85,9 @@ async def validate_task(manifest: TaskManifest, db: DbDep, user: UserDep) -> Val
 
 
 @router.post("/tasks", response_model=TaskOut, status_code=201)
-async def create_task(manifest: TaskManifest, db: DbDep, user: UserDep) -> TaskOut:
+async def create_task(
+    manifest: TaskManifest, request: Request, db: DbDep, user: UserDep, settings: SettingsDep
+) -> TaskOut:
     kernel = _kernel(manifest)
     dataset = await _dataset(db, manifest.dataset_id, user["_id"])
     report = kernel.server.validate(dataset["profile"], manifest.params)
@@ -133,7 +137,9 @@ async def create_task(manifest: TaskManifest, db: DbDep, user: UserDep) -> TaskO
         "created_at": now,
     }
     await db.col("tasks").insert_one(doc)
+    prime_prepared(task_id, prepared)
     await emit(db, "task_created", task_id=task_id, data={"task_type": doc["task_type"]})
+    kick_scheduler(request.app, settings)
     return task_out(doc)
 
 

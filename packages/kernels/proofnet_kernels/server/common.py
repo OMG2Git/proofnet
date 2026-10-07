@@ -105,6 +105,18 @@ def validate_profile(
     )
 
 
+def deterministic_npz(arrays: dict[str, np.ndarray]) -> bytes:
+    """Byte-reproducible .npz (fixed zip timestamps, stored, no pickle)."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
+        for name, arr in arrays.items():
+            info = zipfile.ZipInfo(f"{name}.npy", date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_STORED
+            with z.open(info, "w", force_zip64=True) as f:
+                np.lib.format.write_array(f, np.ascontiguousarray(arr), allow_pickle=False)
+    return buf.getvalue()
+
+
 @dataclass
 class PreparedData:
     x_train: np.ndarray
@@ -125,20 +137,20 @@ class PreparedData:
 
     def to_npz_bytes(self) -> bytes:
         """Deterministic .npz (fixed zip timestamps, no compression): same data => same bytes."""
-        buf = io.BytesIO()
-        arrays = (
-            ("X_train", self.x_train),
-            ("y_train", self.y_train),
-            ("X_test", self.x_test),
-            ("y_test", self.y_test),
+        return deterministic_npz(
+            {
+                "X_train": self.x_train,
+                "y_train": self.y_train,
+                "X_test": self.x_test,
+                "y_test": self.y_test,
+            }
         )
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
-            for name, arr in arrays:
-                info = zipfile.ZipInfo(f"{name}.npy", date_time=(1980, 1, 1, 0, 0, 0))
-                info.compress_type = zipfile.ZIP_STORED
-                with z.open(info, "w", force_zip64=True) as f:
-                    np.lib.format.write_array(f, np.ascontiguousarray(arr), allow_pickle=False)
-        return buf.getvalue()
+
+    def chunk_npz_bytes(self, row_start: int, row_end: int) -> bytes:
+        """Worker input for a row range of the training data: {X, y}, no pickle."""
+        return deterministic_npz(
+            {"X": self.x_train[row_start:row_end], "y": self.y_train[row_start:row_end]}
+        )
 
     def sha256(self) -> str:
         return sha256_hex(self.to_npz_bytes())

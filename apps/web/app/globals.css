@@ -57,6 +57,16 @@ th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--lin
 .badge.idle { background: #dcf3e6; color: var(--ok); }
 .badge.busy, .badge.loading, .badge.benchmarking { background: #fff2cc; color: var(--warn); }
 .badge.offline, .badge.disabled, .badge.error { background: #fbe3e1; color: var(--err); }
+.timeline { display: flex; gap: 8px; list-style: none; padding: 0; flex-wrap: wrap; }
+.timeline li { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; display: flex; flex-direction: column; background: var(--card); }
+.timeline li.done { border-color: var(--ok); }
+.timeline li.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.timeline li.todo { opacity: 0.5; }
+.timeline li.failed { border-color: var(--err); }
+.ok { color: var(--ok); }
+.badge.succeeded, .badge.accepted { background: #dcf3e6; color: var(--ok); }
+.badge.assigned, .badge.pending { background: #e8ecf5; }
+.badge.rejected, .badge.expired { background: #fbe3e1; color: var(--err); }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #14171c; --card: #1c2027; --text: #e6e9ef; --muted: #98a0ae; --line: #2c323d; --accent: #6b93ff; }
   input, select { background: #14171c; color: var(--text); }
