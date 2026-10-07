@@ -104,11 +104,20 @@ function Monitor() {
 
       <h1>Chunks and devices</h1>
       {st.chunks.length === 0 ? (
-        <p className="muted">
-          {t.status === "queued"
-            ? "Waiting for an eligible idle device (online, benchmarked, enough memory)…"
-            : "No chunks."}
-        </p>
+        <div>
+          <p className="muted">
+            {t.status === "queued"
+              ? "Waiting for an eligible idle device (online, benchmarked, enough memory, battery ≥ 20% or charging)…"
+              : "No chunks."}
+          </p>
+          {st.waiting_reasons.length > 0 && (
+            <ul className="muted" data-testid="waiting">
+              {st.waiting_reasons.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       ) : (
         <table>
           <thead>

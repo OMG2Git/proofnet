@@ -26,6 +26,7 @@ class HeartbeatRequest(BaseModel):
     state: DeviceState
     current_assignment_id: str | None = None
     battery: float | None = Field(default=None, ge=0, le=1)
+    charging: bool | None = None
 
 
 class AssignmentPayload(BaseModel):

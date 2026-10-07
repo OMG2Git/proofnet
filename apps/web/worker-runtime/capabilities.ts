@@ -32,7 +32,9 @@ export async function collectCapabilities(): Promise<Caps> {
     /* not available */
   }
   if (!caps.model) caps.model = navigator.userAgent.slice(0, 120);
-  caps.battery = (await readBattery())?.level;
+  const battery = await readBattery();
+  caps.battery = battery?.level;
+  caps.charging = battery?.charging;
   return caps;
 }
 

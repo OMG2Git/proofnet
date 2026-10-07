@@ -94,6 +94,8 @@ async def heartbeat(
     update: dict[str, object] = {"last_seen_at": now}
     if body.battery is not None:
         update["capabilities.battery"] = body.battery
+    if body.charging is not None:
+        update["capabilities.charging"] = body.charging
     # offline -> idle/busy recovery is conditional so concurrent heartbeats apply it once
     back = "busy" if device.get("current_assignment_id") else "idle"
     recovered = await db.col("devices").update_one(

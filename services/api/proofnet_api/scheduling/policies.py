@@ -41,6 +41,43 @@ class AllowAll:
         return True
 
 
+def ineligibility_reasons(
+    device: dict[str, Any],
+    *,
+    now: datetime,
+    settings: Settings,
+    rows: int,
+    n_features: int,
+    excluded_device_ids: list[str] | None = None,
+    task: dict[str, Any] | None = None,
+    policy: DeviceEligibilityPolicy | None = None,
+) -> list[str]:
+    """Why a device cannot take this work (empty = eligible). ARCHITECTURE 6.1."""
+    reasons: list[str] = []
+    if device["status"] != "idle":  # 1
+        reasons.append(f"status is {device['status']}")
+    seen = device.get("last_seen_at")
+    if seen is None or now - seen > timedelta(seconds=settings.offline_after_seconds):
+        reasons.append("no recent heartbeat")
+    runtime = device.get("runtime") or {}
+    if runtime.get("bundle") != KERNEL_BUNDLE_VERSION:  # 2
+        reasons.append("kernel bundle version mismatch")
+    if not (device.get("benchmark") or {}).get("score_cells_per_sec"):  # 3
+        reasons.append("no benchmark yet")
+    caps = device.get("capabilities") or {}  # 4: battery >= 20% or charging (unknown = allowed)
+    battery = caps.get("battery")
+    if battery is not None and battery < MIN_BATTERY and not caps.get("charging"):
+        reasons.append(f"battery {round(battery * 100)}% and not charging (needs 20% or charging)")
+    need, have = mem_estimate_bytes(rows, n_features), mem_budget_bytes(device)  # 5
+    if need > have:
+        reasons.append(f"needs ~{need // 2**20} MB, device budget {have // 2**20} MB")
+    if device["_id"] in (excluded_device_ids or []):  # 6
+        reasons.append("already failed this chunk")
+    if not (policy or AllowAll()).allows(device, task or {}):  # 7
+        reasons.append("excluded by eligibility policy")
+    return reasons
+
+
 def is_eligible(
     device: dict[str, Any],
     *,
@@ -52,25 +89,16 @@ def is_eligible(
     task: dict[str, Any] | None = None,
     policy: DeviceEligibilityPolicy | None = None,
 ) -> bool:
-    """All conditions of ARCHITECTURE 6.1."""
-    if device["status"] != "idle":  # 1 (disabled/offline/busy/initializing all fail)
-        return False
-    seen = device.get("last_seen_at")
-    if seen is None or now - seen > timedelta(seconds=settings.offline_after_seconds):
-        return False
-    runtime = device.get("runtime") or {}
-    if runtime.get("bundle") != KERNEL_BUNDLE_VERSION:  # 2
-        return False
-    if not (device.get("benchmark") or {}).get("score_cells_per_sec"):  # 3
-        return False
-    battery = (device.get("capabilities") or {}).get("battery")  # 4 (unknown = allowed)
-    if battery is not None and battery < MIN_BATTERY:
-        return False
-    if mem_estimate_bytes(rows, n_features) > mem_budget_bytes(device):  # 5
-        return False
-    if device["_id"] in (excluded_device_ids or []):  # 6
-        return False
-    return (policy or AllowAll()).allows(device, task or {})  # 7
+    return not ineligibility_reasons(
+        device,
+        now=now,
+        settings=settings,
+        rows=rows,
+        n_features=n_features,
+        excluded_device_ids=excluded_device_ids,
+        task=task,
+        policy=policy,
+    )
 
 
 class AssignmentPolicy(Protocol):

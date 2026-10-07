@@ -178,6 +178,7 @@ export class WorkerController {
         state: this.snap.state === "busy" ? "busy" : "idle",
         current_assignment_id: this.snap.currentAssignmentId,
         battery: battery?.level,
+        charging: battery?.charging,
       });
       this.backoffMs = 1000;
       this.emit({

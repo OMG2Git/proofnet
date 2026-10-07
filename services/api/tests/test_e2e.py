@@ -401,3 +401,36 @@ def test_tampered_input_never_served_for_wrong_digest(
     assert hashlib.sha256(r.content).hexdigest() == a["input_sha256"]
     with np.load(io.BytesIO(r.content), allow_pickle=False) as z:
         assert z["X"].shape == (a["n_rows"], a["n_features"])
+
+
+def test_waiting_reasons_explain_why_a_task_is_queued(
+    env: tuple[TestClient, Mongo, Settings],
+) -> None:
+    """A queued task says which devices cannot take it and why (no silent waiting)."""
+    client, mongo, s = env
+    h = signup(client)
+    w = make_worker(client, "lowbat@example.com", "low-battery-phone")
+    mongo[s.mongodb_db]["devices"].update_many(
+        {"_id": {"$ne": w.device_id}}, {"$set": {"status": "disabled"}}
+    )
+    mongo[s.mongodb_db]["devices"].update_one(
+        {"_id": w.device_id},
+        {"$set": {"capabilities.battery": 0.1, "capabilities.charging": False}},
+    )
+    ds = upload(client, h, clf_csv(seed=9))
+    tid = client.post(
+        f"{V1}/tasks", headers=h, json=manifest(ds, "gaussian_nb_train", "label", 4)
+    ).json()["id"]
+    time.sleep(1.5)
+    st = status(client, h, tid)
+    assert st["task"]["status"] == "queued"
+    assert any("low-battery-phone" in r and "battery 10%" in r for r in st["waiting_reasons"])
+    # plugging in (charging=true via heartbeat) makes it eligible and the task completes
+    hb = client.post(
+        f"{V1}/worker/heartbeat",
+        headers=w._dev(),
+        json={"session_id": w.session_id, "state": "idle", "battery": 0.1, "charging": True},
+    )
+    assert hb.status_code == 200
+    drive(w, lambda: status(client, h, tid)["task"]["status"] in ("completed", "failed"))
+    assert status(client, h, tid)["task"]["status"] == "completed"

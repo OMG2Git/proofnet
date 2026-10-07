@@ -46,6 +46,7 @@ class DeviceCapabilities(BaseModel):
     memory_gb_reported: float | None = Field(default=None, ge=0, le=1024)
     storage_quota_mb: float | None = Field(default=None, ge=0)
     battery: float | None = Field(default=None, ge=0, le=1)
+    charging: bool | None = None
     network_type: str | None = None
 
 
@@ -213,6 +214,7 @@ class TaskStatus(BaseModel):
 
     server_time: datetime
     task: TaskOut
+    waiting_reasons: list[str] = []
     chunks: list[ChunkOut]
     assignments: list[AssignmentOut]
     artifacts: list[ArtifactOut]

@@ -13,8 +13,9 @@ from ..contracts.api import (
     TaskStatus,
 )
 from ..db import Db, utcnow
-from ..deps import DbDep, UserDep
+from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
+from ..scheduling.policies import ineligibility_reasons
 from .routes import task_out
 
 router = APIRouter(tags=["tasks"])
@@ -40,7 +41,7 @@ def _artifact_out(a: dict[str, Any]) -> ArtifactOut:
 
 
 @router.get("/tasks/{task_id}/status", response_model=TaskStatus)
-async def task_status(task_id: str, db: DbDep, user: UserDep) -> TaskStatus:
+async def task_status(task_id: str, db: DbDep, user: UserDep, settings: SettingsDep) -> TaskStatus:
     """Live snapshot: task, chunks, assignments (with device names), artifacts."""
     t = await _owned_task(db, task_id, user["_id"])
     chunks = [c async for c in db.col("chunks").find({"task_id": task_id}).sort("index", 1)]
@@ -52,9 +53,26 @@ async def task_status(task_id: str, db: DbDep, user: UserDep) -> TaskStatus:
         d["_id"]: d["name"] async for d in db.col("devices").find({"_id": {"$in": device_ids}})
     }
     arts = [a async for a in db.col("artifacts").find({"task_id": task_id}).sort("created_at", 1)]
+    waiting: list[str] = []
+    if t["status"] == "queued":  # say honestly why nothing is running yet
+        now = utcnow()
+        async for d in db.col("devices").find({"status": {"$ne": "disabled"}}):
+            why = ineligibility_reasons(
+                d,
+                now=now,
+                settings=settings,
+                rows=t["prepared"]["n_train"],
+                n_features=t["prepared"]["n_features"],
+                task=t,
+            )
+            if why:
+                waiting.append(f"{d['name']}: " + "; ".join(why))
+        if not waiting:
+            waiting.append("an eligible device is available; scheduling will start the task")
     return TaskStatus(
         server_time=utcnow(),
         task=task_out(t),
+        waiting_reasons=waiting,
         chunks=[
             ChunkOut(
                 id=c["_id"],

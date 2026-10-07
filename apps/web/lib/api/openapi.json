@@ -433,6 +433,17 @@
             ],
             "title": "Battery"
           },
+          "charging": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charging"
+          },
           "logical_cores": {
             "anyOf": [
               {
@@ -871,6 +882,17 @@
               }
             ],
             "title": "Battery"
+          },
+          "charging": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charging"
           },
           "current_assignment_id": {
             "anyOf": [
@@ -1656,6 +1678,14 @@
           },
           "task": {
             "$ref": "#/components/schemas/TaskOut"
+          },
+          "waiting_reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Waiting Reasons",
+            "type": "array"
           }
         },
         "required": [

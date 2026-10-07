@@ -622,6 +622,8 @@ export interface components {
         DeviceCapabilities: {
             /** Battery */
             battery?: number | null;
+            /** Charging */
+            charging?: boolean | null;
             /** Logical Cores */
             logical_cores?: number | null;
             /** Memory Gb Reported */
@@ -775,6 +777,8 @@ export interface components {
         HeartbeatRequest: {
             /** Battery */
             battery?: number | null;
+            /** Charging */
+            charging?: boolean | null;
             /** Current Assignment Id */
             current_assignment_id?: string | null;
             /** Session Id */
@@ -1097,6 +1101,11 @@ export interface components {
              */
             server_time: string;
             task: components["schemas"]["TaskOut"];
+            /**
+             * Waiting Reasons
+             * @default []
+             */
+            waiting_reasons: string[];
         };
         /**
          * TaskType
