@@ -202,7 +202,7 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Gate.** Level 2 on two real phones.
 
-**Status: IN PROGRESS.** Done and verified on desktop (headless Chromium, local and deployed): browser worker (pinned Pyodide module worker, SHA-256-verified kernel bundle, real `bench_v1`, session, heartbeat, wake lock request, identity in localStorage, offline in ~22 s when the tab leaves, same device on reopen), CPython CLI worker (`--count 3` verified), `/network`. Outstanding: the physical two-phone gate and recording phone numbers.
+**Status: COMPLETE (2026-10-07).** Level 2 passed on two physical Android phones (OPPO F31 Pro+ 5G: ~25.7–33.8 M cells/s, runtime load 11.4 s; vivo Y22: ~12.1–12.7 M cells/s, load 26.2 s; wake lock active on both). Backgrounded/locked phone → offline within ~20–25 s on `/network`; restarting the worker brings the same device back to idle. Also verified in headless Chromium (local and deployed) and with the CPython CLI worker (`--count 3`).
 
 ---
 

@@ -41,7 +41,7 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
 6. Part 2 only after M3 (offline research may run in parallel).
 
-Current phase: **P3** — P0, P1, P2 completed 2026-10-07 (P2 verified locally and on the deployed Render+Vercel+Atlas stack). P3 implemented and verified on desktop Chromium (local and deployed): CLI worker, browser Pyodide worker, `/contribute`, `/contribute/run`, `/network`. **Remaining for the P3 gate (Level 2): two different physical Android phones register, show realistic different benchmark scores, go offline when backgrounded and recover; record phone load times/scores below.** Update this line as phases complete.
+Current phase: **P4 (M1)** — P0–P3 completed 2026-10-07. P3 gate (Level 2) passed on two real Android phones (OPPO F31 Pro+ 5G and vivo Y22): different realistic benchmark scores, identity persists, backgrounded phone goes offline and recovers as the same device. Update this line as phases complete.
 
 ---
 
@@ -151,5 +151,5 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 | Deployed URLs (P2) | Backend https://proofnet-api.onrender.com (Render free, Singapore, auto-deploys from `main`); frontend https://proofnet.vercel.app (Vercel, root `apps/web`); Atlas M0 cluster `proofnet-dev`, prod DB `proofnet_prod`. `CORS_ORIGINS` must list the Vercel origin without a trailing slash (backend now tolerates one). | 2026-10-07 |
 | Render cold start after idle (first /health) | 52.5 s for the first request after >16 min idle; 0.2–0.3 s afterwards (Render free, Singapore) | 2026-10-07 |
 | Pyodide first load on phone (Wi-Fi / mobile data) | Real phones, Chrome, Wi-Fi, cold cache: OPPO F31 Pro+ 5G runtime ready in 11.4 s; vivo Y22 in 26.2 s. Mobile-data and cached-reload numbers still to record. Desktop Chromium reference: ≈ 3.4 s. | 2026-10-07 |
-| Benchmark score range (phones) | OPPO F31 Pro+ 5G: 25.72 M cells/s (bench_v1 330 ms); vivo Y22: 12.07 M cells/s (577 ms). Desktop references: CPython ≈ 3.9–5.4e7; Pyodide in Node ≈ 1.9e7; Pyodide in desktop Chromium ≈ 6.5–7.8e7. Screen wake lock `active` on both phones. | 2026-10-07 |
+| Benchmark score range (phones) | Re-benchmarks vary between sessions (OPPO 25.7 → 33.8 M cells/s, vivo 12.1 → 12.7), as the plan expects (scores re-measured every session). First run: OPPO F31 Pro+ 5G: 25.72 M cells/s (bench_v1 330 ms); vivo Y22: 12.07 M cells/s (577 ms). Desktop references: CPython ≈ 3.9–5.4e7; Pyodide in Node ≈ 1.9e7; Pyodide in desktop Chromium ≈ 6.5–7.8e7. Screen wake lock `active` on both phones. | 2026-10-07 |
 | Max observed Pyodide vs CPython discrepancy per kernel | gaussian_nb: 0.0 (exact); linear_ridge: 7.0e-15 normwise relative (Pyodide 314.0.7 / NumPy 2.4.6 under Node vs CPython 3.12 / NumPy 2.4.6; tolerances 1e-8 / 1e-6). Pyodide-in-Node bench_v1 ≈ 1.85e7 cells/s (desktop reference, not a phone). | 2026-10-07 |
