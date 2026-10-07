@@ -159,6 +159,10 @@ class NetworkDevice(BaseModel):
     runtime_kind: str | None = None
     last_seen_age_seconds: float | None = None
     current_assignment_id: str | None = None
+    current_task_id: str | None = None
+    current_task_name: str | None = None
+    current_chunk_index: int | None = None
+    current_rows: int | None = None
 
 
 class NetworkSummary(BaseModel):
@@ -229,6 +233,7 @@ class EventOut(BaseModel):
     chunk_id: str | None = None
     assignment_id: str | None = None
     data: dict[str, Any]
+    message: str = ""
 
 
 class ResultAck(BaseModel):

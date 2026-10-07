@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     public_base_url: str = "http://localhost:8000"
 
     jwt_ttl_minutes: int = 60 * 12
+    status_cache_seconds: float = 1.0  # live snapshot cache (0 disables)
     # Worker protocol / failure handling constants
     heartbeat_idle_ms: int = 2000
     heartbeat_busy_ms: int = 5000

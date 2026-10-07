@@ -18,6 +18,7 @@ from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from ..scheduling.preview import build_plan_preview
 from .prepared import prime_prepared
 
 router = APIRouter(tags=["tasks"])
@@ -78,10 +79,21 @@ async def task_types(_: UserDep) -> list[TaskTypeInfo]:
 
 
 @router.post("/tasks/validate", response_model=ValidationResult)
-async def validate_task(manifest: TaskManifest, db: DbDep, user: UserDep) -> ValidationResult:
+async def validate_task(
+    manifest: TaskManifest, db: DbDep, user: UserDep, settings: SettingsDep
+) -> ValidationResult:
     dataset = await _dataset(db, manifest.dataset_id, user["_id"])
     report = _kernel(manifest).server.validate(dataset["profile"], manifest.params)
-    return ValidationResult(**asdict(report), plan_preview=None)
+    preview = None
+    if report.ok:
+        preview = await build_plan_preview(
+            db,
+            settings,
+            dataset["profile"],
+            manifest.params.model_dump(mode="json"),
+            manifest.execution.model_dump(mode="json"),
+        )
+    return ValidationResult(**asdict(report), plan_preview=preview)
 
 
 @router.post("/tasks", response_model=TaskOut, status_code=201)

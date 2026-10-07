@@ -47,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.background = set()
+    app.state.snapshot_cache = {}
     app.state.bundle = build_bundle()
     app.add_middleware(
         CORSMiddleware,
