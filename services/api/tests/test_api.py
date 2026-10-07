@@ -113,14 +113,14 @@ def test_session_heartbeat_and_offline(
         finally:
             await db.close()
 
-    # 19 s after the last heartbeat: still online; 21 s: offline (20 s threshold)
+    # 15 s after the last heartbeat: still online; 25 s: offline (20 s threshold; margin for connect time)
     devices.update_one(
-        {"_id": dev_id}, {"$set": {"last_seen_at": utcnow() - timedelta(seconds=19)}}
+        {"_id": dev_id}, {"$set": {"last_seen_at": utcnow() - timedelta(seconds=15)}}
     )
     asyncio.run(offline_pass())
     assert get()["status"] == "idle"
     devices.update_one(
-        {"_id": dev_id}, {"$set": {"last_seen_at": utcnow() - timedelta(seconds=21)}}
+        {"_id": dev_id}, {"$set": {"last_seen_at": utcnow() - timedelta(seconds=25)}}
     )
     assert asyncio.run(offline_pass()) >= 1
     assert get()["status"] == "offline"

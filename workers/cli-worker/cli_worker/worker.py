@@ -24,11 +24,13 @@ from typing import Any
 import httpx
 import numpy as np
 
-from proofnet_kernels.core import bench, gaussian_nb, linear_ridge
+from proofnet_kernels.core import bench, cnn, gaussian_nb, linear_ridge
 from proofnet_kernels.core.serialize import payload_sha256
 
 log = logging.getLogger("cli_worker")
 BUNDLE_VERSION = "1"
+HOT_WINDOW_S = 5.0  # after finishing an assignment, poll fast: the next round is probably near
+HOT_POLL_S = 0.3
 
 
 class WorkerError(RuntimeError):
@@ -129,6 +131,7 @@ class Worker:
         self.stop = threading.Event()
         self.faults = faults or Faults()
         self.dead = False  # set by die_after_start: the worker has vanished
+        self._hot_until = 0.0  # poll quickly for a few seconds after finishing work
         self._rng = random.Random(self.faults.seed)
 
     # ---- auth helpers ----
@@ -263,19 +266,34 @@ class Worker:
                 raise WorkerError("input SHA-256 mismatch")
             with np.load(BytesIO(r.content), allow_pickle=False) as z:  # never pickle
                 x, y = z["X"], z["y"]
-            if x.shape != (a["n_rows"], a["n_features"]):
+                w = z["w"] if "w" in z.files else None
+            iterative = a["kernel"] == "cnn_image_train"
+            bad_shape = (
+                x.shape[0] != a["n_rows"]
+                if iterative
+                else x.shape
+                != (
+                    a["n_rows"],
+                    a["n_features"],
+                )
+            )
+            if bad_shape:
                 raise WorkerError(f"unexpected input shape {x.shape}")
             t1 = time.perf_counter()
             if a["kernel"] == "gaussian_nb_train":
                 payload = gaussian_nb.map(x, y, int(a["params"]["n_classes"]))
             elif a["kernel"] == "linear_ridge_train":
                 payload = linear_ridge.map(x, y)
+            elif iterative and w is not None:
+                payload = cnn.map(x, y, w, a["params"]["arch"])
             else:
                 raise WorkerError(f"unknown kernel {a['kernel']}")
             compute_ms = (time.perf_counter() - t1) * 1000
             if self.faults.corrupt_result:  # plausible-looking but wrong
                 if a["kernel"] == "gaussian_nb_train":
                     payload["classes"]["n"][0] += 7
+                elif a["kernel"] == "cnn_image_train":
+                    payload["n"] += 7
                 else:
                     payload["n"] += 7
             body = {
@@ -319,6 +337,7 @@ class Worker:
             if not self.dead:
                 self.state_name = "idle"
                 self.current_assignment_id = None
+                self._hot_until = time.monotonic() + HOT_WINDOW_S
 
     # ---- main loop ----
     def run(self, max_seconds: float | None = None) -> None:
@@ -336,6 +355,8 @@ class Worker:
                 self.heartbeat_once()
                 backoff = 1.0
                 wait = self.heartbeat_ms[self.state_name if self.state_name == "busy" else "idle"]
+                if time.monotonic() < self._hot_until:
+                    wait = min(wait, int(HOT_POLL_S * 1000))
             except (httpx.TransportError, WorkerError) as e:
                 log.warning("[%s] %s; retrying in %.0fs", self.name, e, backoff)
                 wait = int(backoff * 1000)
