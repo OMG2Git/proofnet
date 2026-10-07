@@ -31,6 +31,11 @@ type WakeLockSentinelLike = { release: () => Promise<void>; addEventListener: (e
 
 export class WorkerController {
   private worker: Worker | null = null;
+  private initMsg: Extract<ToWorker, { type: "init" }> | null = null;
+  private manifest: { kernel_bundle_version: string } | null = null;
+  private workerReady = false;
+  private restarting = false;
+  private cancelled = new Set<string>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private wake: WakeLockSentinelLike | null = null;
   private stopped = true;
@@ -78,10 +83,8 @@ export class WorkerController {
     try {
       const manifest = await this.api.manifest();
       this.t0 = performance.now();
-      this.worker = new Worker("/compute.worker.js", { type: "module" });
-      this.worker.onmessage = (ev: MessageEvent<FromWorker>) => void this.onWorker(ev.data, manifest);
-      this.worker.onerror = (ev) => this.fail(`Worker crashed: ${ev.message}`);
-      const init: ToWorker = {
+      this.manifest = manifest;
+      this.initMsg = {
         type: "init",
         apiBase: this.apiBase,
         deviceToken: this.deviceToken,
@@ -89,10 +92,33 @@ export class WorkerController {
         kernelBundleVersion: manifest.kernel_bundle_version,
         kernelBundleSha256: manifest.kernel_bundle_sha256,
       };
-      this.worker.postMessage(init);
+      this.spawnWorker();
     } catch (e) {
       this.fail(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  private spawnWorker() {
+    if (!this.initMsg) return;
+    this.workerReady = false;
+    this.worker = new Worker("/compute.worker.js", { type: "module" });
+    this.worker.onmessage = (ev: MessageEvent<FromWorker>) => {
+      if (this.manifest) void this.onWorker(ev.data, this.manifest);
+    };
+    this.worker.onerror = (ev) => this.fail(`Worker crashed: ${ev.message}`);
+    this.worker.postMessage(this.initMsg);
+  }
+
+  /** Cancel = terminate the Web Worker and start a fresh one (ARCHITECTURE 7.2). */
+  private restartWorker(assignmentId: string) {
+    this.cancelled.add(assignmentId);
+    this.emit({}, `Server cancelled ${assignmentId}: stopping the computation`);
+    this.pendingRun?.reject(new Error("cancelled by the server"));
+    this.pendingRun = null;
+    this.worker?.terminate();
+    this.restarting = true;
+    this.emit({ currentAssignmentId: null, state: "idle", stage: "Restarting runtime after cancel" });
+    this.spawnWorker();
   }
 
   private async onWorker(msg: FromWorker, manifest: { kernel_bundle_version: string }) {
@@ -102,6 +128,13 @@ export class WorkerController {
         this.emit({ stage: msg.detail ?? msg.stage }, msg.detail ?? msg.stage);
         break;
       case "ready": {
+        if (this.restarting) {
+          this.restarting = false;
+          this.workerReady = true;
+          this.emit({ state: "idle", stage: "Ready", currentAssignmentId: null }, "Runtime restarted; ready for work");
+          break;
+        }
+        this.workerReady = true;
         const ms = Math.round(performance.now() - this.t0);
         this.emit(
           {
@@ -194,7 +227,11 @@ export class WorkerController {
           return;
         }
         if (d.type === "run") {
-          if (!this.snap.currentAssignmentId) void this.execute(d.assignment);
+          if (!this.snap.currentAssignmentId && this.workerReady) void this.execute(d.assignment);
+          continue;
+        }
+        if (d.type === "cancel") {
+          if (this.snap.currentAssignmentId === d.assignment_id) this.restartWorker(d.assignment_id);
           continue;
         }
         this.emit({}, `Directive "${d.type}" not handled yet`);
@@ -230,6 +267,7 @@ export class WorkerController {
       const td = performance.now();
       const input = await this.api.downloadInput(a.input_url);
       const downloadMs = performance.now() - td;
+      if (this.cancelled.has(a.assignment_id)) throw new Error("cancelled by the server");
       if ((await this.sha256Hex(input)) !== a.input_sha256) throw new Error("input SHA-256 mismatch");
       this.emit({}, `Downloaded ${(input.byteLength / 1e6).toFixed(2)} MB in ${Math.round(downloadMs)} ms (SHA-256 ok)`);
       const runtime = this.snap.runtime;
@@ -258,6 +296,7 @@ export class WorkerController {
         runtime,
       });
       const body = `${head.slice(0, -1)},"payload":${result.payloadJson}}`;
+      if (this.cancelled.has(a.assignment_id)) throw new Error("cancelled by the server");
       const ack = await this.api.postResult(a.assignment_id, body);
       this.emit(
         { state: "idle", currentAssignmentId: null, stage: "Ready", completed: this.snap.completed + 1 },
@@ -265,6 +304,10 @@ export class WorkerController {
       );
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
+      if (this.cancelled.has(a.assignment_id)) {
+        this.emit({}, `Assignment ${a.assignment_id} cancelled`);
+        return; // the server already closed it; nothing to report
+      }
       this.emit({ state: "idle", currentAssignmentId: null, stage: "Ready" }, `Assignment failed: ${message}`);
       try {
         await this.api.failAssignment(a.assignment_id, "EXECUTION_ERROR", message.slice(0, 500));

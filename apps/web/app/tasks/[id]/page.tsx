@@ -155,7 +155,25 @@ function Monitor() {
         {t.task_type} · {String(t.prepared["n_train"])} train / {String(t.prepared["n_test"])} test rows ·{" "}
         {String(t.prepared["n_features"])} features
       </p>
-      {t.error && <p className="error">Failed: {t.error}</p>}
+      {t.error && (
+        <p className="error" data-testid="task-error">
+          {t.status === "cancelled" ? "Cancelled" : "Failed"}: {t.error}
+        </p>
+      )}
+      {(t.status === "queued" || t.status === "running") && (
+        <p>
+          <button
+            data-testid="cancel"
+            onClick={() => {
+              if (window.confirm("Cancel this task? Running chunks are stopped on the devices.")) {
+                void api.cancelTask(t.id).catch((e: Error) => alert(e.message));
+              }
+            }}
+          >
+            Cancel task
+          </button>
+        </p>
+      )}
 
       <h1>State</h1>
       <Timeline status={t.status} history={t.status_history} />
@@ -227,6 +245,7 @@ function Monitor() {
               <th>Download</th>
               <th>Compute</th>
               <th>Total</th>
+              <th>Note</th>
             </tr>
           </thead>
           <tbody>
@@ -247,6 +266,7 @@ function Monitor() {
                   <td>{fmtMs(a?.timings?.["download_ms"])}</td>
                   <td>{fmtMs(a?.timings?.["compute_ms"])}</td>
                   <td>{fmtMs(a?.timings?.["total_ms"])}</td>
+                  <td className="muted">{a?.error ? String((a.error as Record<string, unknown>)["message"] ?? "") : ""}</td>
                 </tr>
               )),
             )}

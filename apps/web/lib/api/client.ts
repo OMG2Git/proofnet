@@ -134,6 +134,7 @@ export const api = {
   listTasks: () => request<TaskOut[]>("/tasks"),
   getTask: (id: string) => request<TaskOut>(`/tasks/${id}`),
   taskStatus: (id: string) => request<TaskStatus>(`/tasks/${id}/status`),
+  cancelTask: (id: string) => request<TaskOut>(`/tasks/${id}/cancel`, { method: "POST" }),
   taskEvents: (id: string) => request<EventOut[]>(`/tasks/${id}/events`),
   /** Authenticated download (artifacts are owner-only). */
   downloadArtifact: async (a: ArtifactOut): Promise<Blob> => {
