@@ -284,6 +284,20 @@
         "title": "Body_upload_dataset_api_v1_datasets_post",
         "type": "object"
       },
+      "Body_upload_image_dataset_api_v1_image_datasets_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_image_dataset_api_v1_image_datasets_post",
+        "type": "object"
+      },
       "CancelDirective": {
         "properties": {
           "assignment_id": {
@@ -376,6 +390,88 @@
           "max_attempts"
         ],
         "title": "ChunkOut",
+        "type": "object"
+      },
+      "CnnParams": {
+        "additionalProperties": false,
+        "properties": {
+          "conv1_filters": {
+            "default": 8,
+            "maximum": 16.0,
+            "minimum": 4.0,
+            "title": "Conv1 Filters",
+            "type": "integer"
+          },
+          "conv2_filters": {
+            "default": 16,
+            "maximum": 32.0,
+            "minimum": 4.0,
+            "title": "Conv2 Filters",
+            "type": "integer"
+          },
+          "dense_units": {
+            "default": 64,
+            "maximum": 128.0,
+            "minimum": 16.0,
+            "title": "Dense Units",
+            "type": "integer"
+          },
+          "global_batch_size": {
+            "default": 128,
+            "maximum": 512.0,
+            "minimum": 16.0,
+            "title": "Global Batch Size",
+            "type": "integer"
+          },
+          "init_seed": {
+            "default": 0,
+            "title": "Init Seed",
+            "type": "integer"
+          },
+          "learning_rate": {
+            "default": 0.05,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Learning Rate",
+            "type": "number"
+          },
+          "momentum": {
+            "default": 0.9,
+            "maximum": 0.99,
+            "minimum": 0.0,
+            "title": "Momentum",
+            "type": "number"
+          },
+          "split_seed": {
+            "default": 42,
+            "title": "Split Seed",
+            "type": "integer"
+          },
+          "steps": {
+            "default": 200,
+            "description": "training rounds (SGD steps)",
+            "maximum": 2000.0,
+            "minimum": 5.0,
+            "title": "Steps",
+            "type": "integer"
+          },
+          "test_fraction": {
+            "default": 0.15,
+            "maximum": 0.5,
+            "minimum": 0.05,
+            "title": "Test Fraction",
+            "type": "number"
+          },
+          "verify_rounds": {
+            "default": 3,
+            "description": "rounds re-checked against a centralized gradient",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Verify Rounds",
+            "type": "integer"
+          }
+        },
+        "title": "CnnParams",
         "type": "object"
       },
       "DatasetOut": {
@@ -973,6 +1069,100 @@
           "next_heartbeat_ms"
         ],
         "title": "HeartbeatResponse",
+        "type": "object"
+      },
+      "ImageDatasetOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "size_bytes",
+          "profile",
+          "created_at"
+        ],
+        "title": "ImageDatasetOut",
+        "type": "object"
+      },
+      "ImageTaskManifest": {
+        "additionalProperties": false,
+        "description": "Image CNN training (separate pipeline from the CSV workloads; ARCHITECTURE 4.5).",
+        "properties": {
+          "dataset_id": {
+            "pattern": "^img_",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "execution": {
+            "$ref": "#/components/schemas/ExecutionSettings",
+            "default": {
+              "max_devices": 4,
+              "min_devices": 1,
+              "start_policy": "wait_for_min_devices"
+            }
+          },
+          "kernel_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Kernel Version",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "$ref": "#/components/schemas/CnnParams",
+            "default": {
+              "conv1_filters": 8,
+              "conv2_filters": 16,
+              "dense_units": 64,
+              "global_batch_size": 128,
+              "init_seed": 0,
+              "learning_rate": 0.05,
+              "momentum": 0.9,
+              "split_seed": 42,
+              "steps": 200,
+              "test_fraction": 0.15,
+              "verify_rounds": 3
+            }
+          },
+          "task_type": {
+            "const": "cnn_image_train",
+            "default": "cnn_image_train",
+            "title": "Task Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "dataset_id"
+        ],
+        "title": "ImageTaskManifest",
         "type": "object"
       },
       "LinearRidgeParams": {
@@ -1667,6 +1857,18 @@
             "title": "Task Type",
             "type": "string"
           },
+          "training": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training"
+          },
           "validation": {
             "additionalProperties": true,
             "title": "Validation",
@@ -1800,6 +2002,110 @@
           "access_token"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "TrainingRound": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "devices": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "loss": {
+            "title": "Loss",
+            "type": "number"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "round": {
+            "title": "Round",
+            "type": "integer"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification"
+          }
+        },
+        "required": [
+          "round",
+          "loss",
+          "accuracy",
+          "n",
+          "devices"
+        ],
+        "title": "TrainingRound",
+        "type": "object"
+      },
+      "TrainingStatus": {
+        "description": "Live training curve and per-round contributions (real values from the devices).",
+        "properties": {
+          "global_batch_size": {
+            "title": "Global Batch Size",
+            "type": "integer"
+          },
+          "learning_rate": {
+            "title": "Learning Rate",
+            "type": "number"
+          },
+          "n_params": {
+            "title": "N Params",
+            "type": "integer"
+          },
+          "round": {
+            "title": "Round",
+            "type": "integer"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingRound"
+            },
+            "title": "Rounds",
+            "type": "array"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          },
+          "verified_rounds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Verified Rounds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps",
+          "round",
+          "state",
+          "global_batch_size",
+          "learning_rate",
+          "n_params",
+          "rounds",
+          "verified_rounds"
+        ],
+        "title": "TrainingStatus",
         "type": "object"
       },
       "UserOut": {
@@ -2783,6 +3089,469 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/api/v1/image-datasets": {
+      "get": {
+        "operationId": "list_image_datasets_api_v1_image_datasets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImageDatasetOut"
+                  },
+                  "title": "Response List Image Datasets Api V1 Image Datasets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Image Datasets",
+        "tags": [
+          "images"
+        ]
+      },
+      "post": {
+        "description": "A .zip of class folders (png/jpg), or a Kaggle MNIST-style pixel .csv.",
+        "operationId": "upload_image_dataset_api_v1_image_datasets_post",
+        "parameters": [
+          {
+            "description": "images are resized to side x side",
+            "in": "query",
+            "name": "side",
+            "required": false,
+            "schema": {
+              "default": 28,
+              "description": "images are resized to side x side",
+              "title": "Side",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_image_dataset_api_v1_image_datasets_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageDatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Upload Image Dataset",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/v1/image-datasets/{dataset_id}": {
+      "get": {
+        "operationId": "get_image_dataset_api_v1_image_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageDatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Image Dataset",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/v1/image-tasks": {
+      "post": {
+        "operationId": "create_image_task_api_v1_image_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageTaskManifest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Create Image Task",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/v1/image-tasks/validate": {
+      "post": {
+        "operationId": "validate_image_task_api_v1_image_tasks_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageTaskManifest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Validate Image Task",
+        "tags": [
+          "images"
+        ]
       }
     },
     "/api/v1/network/summary": {
@@ -3854,6 +4623,98 @@
         "summary": "Task Status",
         "tags": [
           "tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/training": {
+      "get": {
+        "operationId": "training_status_api_v1_tasks__task_id__training_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Training Status",
+        "tags": [
+          "images"
         ]
       }
     },

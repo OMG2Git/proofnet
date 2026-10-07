@@ -90,15 +90,18 @@ function bench() {
 const RUN_PROGRAM = `
 import json, time
 import numpy as np
-from proofnet_kernels.core import gaussian_nb, linear_ridge
+from proofnet_kernels.core import gaussian_nb, linear_ridge, cnn
 from proofnet_kernels.core.serialize import canonical_json, payload_sha256
 z = np.load("/input.npz", allow_pickle=False)
 X, y = z["X"], z["y"]
+params = json.loads(_pn_params_json)
 t = time.perf_counter()
 if _pn_kernel == "gaussian_nb_train":
     payload = gaussian_nb.map(X, y, int(_pn_n_classes))
 elif _pn_kernel == "linear_ridge_train":
     payload = linear_ridge.map(X, y)
+elif _pn_kernel == "cnn_image_train":
+    payload = cnn.map(X, y, z["w"], params["arch"])
 else:
     raise ValueError("unknown kernel " + str(_pn_kernel))
 compute_ms = (time.perf_counter() - t) * 1000.0
@@ -110,6 +113,7 @@ function run(m: Extract<ToWorker, { type: "run" }>) {
   pyodide.FS.writeFile("/input.npz", new Uint8Array(m.input));
   pyodide.globals.set("_pn_kernel", m.kernel);
   pyodide.globals.set("_pn_n_classes", Number(m.params["n_classes"] ?? 0));
+  pyodide.globals.set("_pn_params_json", JSON.stringify(m.params));
   const out = JSON.parse(pyodide.runPython(RUN_PROGRAM) as string) as {
     payload_json: string;
     sha: string;

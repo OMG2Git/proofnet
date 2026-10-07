@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import AuthGate from "@/components/AuthGate";
-import { api, type ArtifactOut, type EventOut, type TaskStatus } from "@/lib/api/client";
+import LineChart from "@/components/LineChart";
+import { api, type ArtifactOut, type EventOut, type TaskStatus, type TrainingStatus } from "@/lib/api/client";
 
 const STATES = ["queued", "running", "aggregating", "completed"] as const;
 
@@ -101,6 +102,157 @@ async function save(api_: typeof api, a: ArtifactOut) {
   URL.revokeObjectURL(url);
 }
 
+
+function ImageResult({ names, metrics }: { names: string[]; metrics: Record<string, unknown> }) {
+  const per = (metrics["per_class_accuracy"] ?? {}) as Record<string, number>;
+  const cm = (metrics["confusion_matrix"] ?? []) as number[][];
+  const max = Math.max(1, ...cm.flat());
+  return (
+    <>
+      <p className="muted">Per-class accuracy on the aggregator-held holdout images:</p>
+      <div className="bars" data-testid="perclass">
+        {Object.entries(per).map(([k, v]) => (
+          <div className="barrow" key={k}>
+            <span>{k}</span>
+            <div className="track">
+              <div className="fill" style={{ width: `${v * 100}%` }} />
+            </div>
+            <span>{(v * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+      {cm.length > 0 && (
+        <details>
+          <summary className="muted">Confusion matrix (rows = true class, columns = predicted)</summary>
+          <table className="cm">
+            <thead>
+              <tr>
+                <th />
+                {names.map((n) => (
+                  <th key={n}>{n.slice(0, 6)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cm.map((row, i) => (
+                <tr key={i}>
+                  <th>{(names[i] ?? String(i)).slice(0, 8)}</th>
+                  {row.map((v, j) => (
+                    <td key={j} style={{ background: `rgba(43,89,217,${(v / max) * 0.7})` }}>
+                      {v}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
+    </>
+  );
+}
+
+function TrainingPanel({ id, status }: { id: string; status: string }) {
+  const [tr, setTr] = useState<TrainingStatus | null>(null);
+  const active = !["completed", "failed", "cancelled"].includes(status);
+
+  useEffect(() => {
+    let alive = true;
+    const tick = () =>
+      api
+        .trainingStatus(id)
+        .then((d) => alive && setTr(d))
+        .catch(() => undefined);
+    void tick();
+    if (!active) return () => void (alive = false);
+    const t = setInterval(tick, 1500);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [id, active, status]);
+
+  if (!tr) return <p className="muted">Waiting for the first training round…</p>;
+  const pct = Math.min(100, (tr.round / tr.steps) * 100);
+  const loss = tr.rounds.map((r) => r.loss);
+  const acc = tr.rounds.map((r) => r.accuracy);
+  const per = new Map<string, { rows: number; rounds: number; compute: number }>();
+  for (const r of tr.rounds)
+    for (const d of r.devices) {
+      const k = d["name"] ? String(d["name"]) : String(d["device_id"]);
+      const e = per.get(k) ?? { rows: 0, rounds: 0, compute: 0 };
+      e.rows += Number(d["rows"] ?? 0);
+      e.rounds += 1;
+      e.compute += Number(d["compute_ms"] ?? 0);
+      per.set(k, e);
+    }
+  const totalRows = [...per.values()].reduce((a, e) => a + e.rows, 0) || 1;
+  const last = tr.rounds[tr.rounds.length - 1];
+  return (
+    <>
+      <h1>Training</h1>
+      <div className="card" data-testid="training">
+        <p data-testid="training-progress">
+          Round <strong>{tr.round}</strong> of {tr.steps} · batch {tr.global_batch_size} · lr {tr.learning_rate} ·{" "}
+          {tr.n_params.toLocaleString()} parameters · <span className="muted">{tr.state}</span>
+        </p>
+        <div className="progress">
+          <div style={{ width: `${pct}%` }} />
+        </div>
+        {last && (
+          <p className="muted">
+            latest round {last.round}: loss {last.loss.toFixed(3)}, batch accuracy {(last.accuracy * 100).toFixed(1)}% (
+            {last.devices.map((d) => `${String(d["name"])} ${String(d["rows"])} img`).join(", ")})
+          </p>
+        )}
+        <div className="legend">
+          <span>
+            <i style={{ background: "#d9534f" }} />
+            loss (batch, from devices)
+          </span>
+          <span>
+            <i style={{ background: "#2b59d9" }} />
+            batch accuracy
+          </span>
+          <span className="muted">● centrally verified rounds</span>
+        </div>
+        <LineChart series={[{ name: "loss", color: "#d9534f", values: loss }]} marks={tr.verified_rounds} yMin={0} />
+        <LineChart
+          series={[{ name: "accuracy", color: "#2b59d9", values: acc }]}
+          marks={tr.verified_rounds}
+          yMin={0}
+          yMax={1}
+          height={140}
+          yFormat={(v) => `${Math.round(v * 100)}%`}
+        />
+        <h1>Device contributions</h1>
+        <table data-testid="contrib">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Rounds</th>
+              <th>Images computed</th>
+              <th>Share</th>
+              <th>Avg compute / round</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...per.entries()].map(([name, e]) => (
+              <tr key={name}>
+                <td>{name}</td>
+                <td>{e.rounds}</td>
+                <td>{e.rows}</td>
+                <td>{((e.rows / totalRows) * 100).toFixed(1)}%</td>
+                <td>{fmtMs(e.compute / Math.max(e.rounds, 1))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 function Monitor() {
   const { id } = useParams<{ id: string }>();
   const [st, setSt] = useState<TaskStatus | null>(null);
@@ -137,7 +289,12 @@ function Monitor() {
   const t = st.task;
   const result = t.result as {
     metrics?: Record<string, unknown>;
-    reference_check?: { passed: boolean; max_relative_difference: number; tolerance: number };
+    reference_check?: {
+      passed: boolean | null;
+      max_relative_difference: number | null;
+      tolerance: number;
+      verified_rounds?: number[];
+    };
   } | null;
   const asgByChunk = new Map<string, TaskStatus["assignments"]>();
   for (const a of st.assignments) asgByChunk.set(a.chunk_id, [...(asgByChunk.get(a.chunk_id) ?? []), a]);
@@ -178,7 +335,9 @@ function Monitor() {
       <h1>State</h1>
       <Timeline status={t.status} history={t.status_history} />
 
-      {(t.plan as PlanDoc | null)?.shares && (
+      {t.training && <TrainingPanel id={t.id} status={t.status} />}
+
+      {!t.training && (t.plan as PlanDoc | null)?.shares && (
         <>
           <h1>Plan vs actual</h1>
           <p className="muted">{(t.plan as PlanDoc).explanation}</p>
@@ -217,7 +376,7 @@ function Monitor() {
 
       <Lanes st={st} />
 
-      <h1>Chunks and devices</h1>
+      <h1>{t.training ? "Current round: chunks and devices" : "Chunks and devices"}</h1>
       {st.chunks.length === 0 ? (
         <div>
           <p className="muted">
@@ -280,14 +439,25 @@ function Monitor() {
           <div className="card">
             {result.reference_check && (
               <p data-testid="reference">
-                Reference check (distributed == centralized):{" "}
-                <strong className={result.reference_check.passed ? "ok" : "error"}>
-                  {result.reference_check.passed ? "PASSED" : "FAILED"}
+                {t.training
+                  ? "Gradient check (devices vs centralized recomputation of the same batch): "
+                  : "Reference check (distributed == centralized): "}
+                <strong
+                  className={
+                    result.reference_check.passed === true ? "ok" : result.reference_check.passed === false ? "error" : "muted"
+                  }
+                >
+                  {result.reference_check.passed === true ? "PASSED" : result.reference_check.passed === false ? "FAILED" : "NOT RUN"}
                 </strong>{" "}
-                <span className="muted">
-                  max relative difference {result.reference_check.max_relative_difference.toExponential(2)} (tolerance{" "}
-                  {result.reference_check.tolerance.toExponential(0)})
-                </span>
+                {result.reference_check.max_relative_difference !== null && (
+                  <span className="muted">
+                    max relative difference {result.reference_check.max_relative_difference.toExponential(2)} (tolerance{" "}
+                    {result.reference_check.tolerance.toExponential(0)})
+                    {result.reference_check.verified_rounds
+                      ? `, rounds ${result.reference_check.verified_rounds.join(", ")}`
+                      : ""}
+                  </span>
+                )}
               </p>
             )}
             <p className="muted">Holdout metrics (computed by the aggregator, not distributed):</p>
@@ -301,6 +471,12 @@ function Monitor() {
                 ))}
               </tbody>
             </table>
+            {t.training && (
+              <ImageResult
+                names={(t.prepared["class_labels"] as string[]) ?? []}
+                metrics={(result?.metrics ?? {}) as Record<string, unknown>}
+              />
+            )}
             <div className="row">
               {st.artifacts.map((a) => (
                 <button key={a.id} onClick={() => void save(api, a)} data-testid={`dl-${a.kind}`}>

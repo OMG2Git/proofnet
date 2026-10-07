@@ -21,6 +21,9 @@ export type SessionResponse = S["SessionResponse"];
 export type HeartbeatRequest = S["HeartbeatRequest"];
 export type HeartbeatResponse = S["HeartbeatResponse"];
 export type AssignmentPayload = S["AssignmentPayload"];
+export type ImageDatasetOut = S["ImageDatasetOut"];
+export type ImageTaskManifest = S["ImageTaskManifest"];
+export type TrainingStatus = S["TrainingStatus"];
 export type ResultAck = S["ResultAck"];
 export type TaskStatus = S["TaskStatus"];
 export type ArtifactOut = S["ArtifactOut"];
@@ -134,6 +137,17 @@ export const api = {
   listTasks: () => request<TaskOut[]>("/tasks"),
   getTask: (id: string) => request<TaskOut>(`/tasks/${id}`),
   taskStatus: (id: string) => request<TaskStatus>(`/tasks/${id}/status`),
+  imageDatasets: () => request<ImageDatasetOut[]>("/image-datasets"),
+  uploadImageDataset: (file: File, side = 28) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<ImageDatasetOut>(`/image-datasets?side=${side}`, { method: "POST", form });
+  },
+  validateImageTask: (m: ImageTaskManifest) =>
+    request<ValidationResult>("/image-tasks/validate", { method: "POST", json: m }),
+  createImageTask: (m: ImageTaskManifest) =>
+    request<TaskOut>("/image-tasks", { method: "POST", json: m }),
+  trainingStatus: (id: string) => request<TrainingStatus>(`/tasks/${id}/training`),
   cancelTask: (id: string) => request<TaskOut>(`/tasks/${id}/cancel`, { method: "POST" }),
   taskEvents: (id: string) => request<EventOut[]>(`/tasks/${id}/events`),
   /** Authenticated download (artifacts are owner-only). */

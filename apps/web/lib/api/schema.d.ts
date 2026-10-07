@@ -174,6 +174,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/image-datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Image Datasets */
+        get: operations["list_image_datasets_api_v1_image_datasets_get"];
+        put?: never;
+        /**
+         * Upload Image Dataset
+         * @description A .zip of class folders (png/jpg), or a Kaggle MNIST-style pixel .csv.
+         */
+        post: operations["upload_image_dataset_api_v1_image_datasets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/image-datasets/{dataset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Image Dataset */
+        get: operations["get_image_dataset_api_v1_image_datasets__dataset_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/image-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Image Task */
+        post: operations["create_image_task_api_v1_image_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/image-tasks/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate Image Task */
+        post: operations["validate_image_task_api_v1_image_tasks_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/network/summary": {
         parameters: {
             query?: never;
@@ -361,6 +433,23 @@ export interface paths {
          * @description Live snapshot: task, chunks, assignments (with device names), artifacts. Cached ~1 s.
          */
         get: operations["task_status_api_v1_tasks__task_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/training": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Training Status */
+        get: operations["training_status_api_v1_tasks__task_id__training_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -584,6 +673,11 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_upload_image_dataset_api_v1_image_datasets_post */
+        Body_upload_image_dataset_api_v1_image_datasets_post: {
+            /** File */
+            file: string;
+        };
         /** CancelDirective */
         CancelDirective: {
             /** Assignment Id */
@@ -618,6 +712,66 @@ export interface components {
             row_start: number;
             /** Status */
             status: string;
+        };
+        /** CnnParams */
+        CnnParams: {
+            /**
+             * Conv1 Filters
+             * @default 8
+             */
+            conv1_filters: number;
+            /**
+             * Conv2 Filters
+             * @default 16
+             */
+            conv2_filters: number;
+            /**
+             * Dense Units
+             * @default 64
+             */
+            dense_units: number;
+            /**
+             * Global Batch Size
+             * @default 128
+             */
+            global_batch_size: number;
+            /**
+             * Init Seed
+             * @default 0
+             */
+            init_seed: number;
+            /**
+             * Learning Rate
+             * @default 0.05
+             */
+            learning_rate: number;
+            /**
+             * Momentum
+             * @default 0.9
+             */
+            momentum: number;
+            /**
+             * Split Seed
+             * @default 42
+             */
+            split_seed: number;
+            /**
+             * Steps
+             * @description training rounds (SGD steps)
+             * @default 200
+             */
+            steps: number;
+            /**
+             * Test Fraction
+             * @default 0.15
+             */
+            test_fraction: number;
+            /**
+             * Verify Rounds
+             * @description rounds re-checked against a centralized gradient
+             * @default 3
+             */
+            verify_rounds: number;
         };
         /** DatasetOut */
         DatasetOut: {
@@ -825,6 +979,70 @@ export interface components {
              * Format: date-time
              */
             server_time: string;
+        };
+        /** ImageDatasetOut */
+        ImageDatasetOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Filename */
+            filename: string;
+            /** Id */
+            id: string;
+            /** Profile */
+            profile: {
+                [key: string]: unknown;
+            };
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /**
+         * ImageTaskManifest
+         * @description Image CNN training (separate pipeline from the CSV workloads; ARCHITECTURE 4.5).
+         */
+        ImageTaskManifest: {
+            /** Dataset Id */
+            dataset_id: string;
+            /**
+             * @default {
+             *       "max_devices": 4,
+             *       "min_devices": 1,
+             *       "start_policy": "wait_for_min_devices"
+             *     }
+             */
+            execution: components["schemas"]["ExecutionSettings"];
+            /**
+             * Kernel Version
+             * @default 1
+             * @constant
+             */
+            kernel_version: "1";
+            /** Name */
+            name: string;
+            /**
+             * @default {
+             *       "conv1_filters": 8,
+             *       "conv2_filters": 16,
+             *       "dense_units": 64,
+             *       "global_batch_size": 128,
+             *       "init_seed": 0,
+             *       "learning_rate": 0.05,
+             *       "momentum": 0.9,
+             *       "split_seed": 42,
+             *       "steps": 200,
+             *       "test_fraction": 0.15,
+             *       "verify_rounds": 3
+             *     }
+             */
+            params: components["schemas"]["CnnParams"];
+            /**
+             * Task Type
+             * @default cnn_image_train
+             * @constant
+             */
+            task_type: "cnn_image_train";
         };
         /** LinearRidgeParams */
         LinearRidgeParams: {
@@ -1109,6 +1327,10 @@ export interface components {
             }[];
             /** Task Type */
             task_type: string;
+            /** Training */
+            training?: {
+                [key: string]: unknown;
+            } | null;
             /** Validation */
             validation: {
                 [key: string]: unknown;
@@ -1168,6 +1390,47 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /** TrainingRound */
+        TrainingRound: {
+            /** Accuracy */
+            accuracy: number;
+            /** Devices */
+            devices: {
+                [key: string]: unknown;
+            }[];
+            /** Loss */
+            loss: number;
+            /** N */
+            n: number;
+            /** Round */
+            round: number;
+            /** Verification */
+            verification?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * TrainingStatus
+         * @description Live training curve and per-round contributions (real values from the devices).
+         */
+        TrainingStatus: {
+            /** Global Batch Size */
+            global_batch_size: number;
+            /** Learning Rate */
+            learning_rate: number;
+            /** N Params */
+            n_params: number;
+            /** Round */
+            round: number;
+            /** Rounds */
+            rounds: components["schemas"]["TrainingRound"][];
+            /** State */
+            state: string;
+            /** Steps */
+            steps: number;
+            /** Verified Rounds */
+            verified_rounds: number[];
         };
         /** UserOut */
         UserOut: {
@@ -1919,6 +2182,393 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_image_datasets_api_v1_image_datasets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageDatasetOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    upload_image_dataset_api_v1_image_datasets_post: {
+        parameters: {
+            query?: {
+                /** @description images are resized to side x side */
+                side?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_image_dataset_api_v1_image_datasets_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageDatasetOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    get_image_dataset_api_v1_image_datasets__dataset_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageDatasetOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    create_image_task_api_v1_image_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageTaskManifest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    validate_image_task_api_v1_image_tasks_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageTaskManifest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationResult"];
                 };
             };
             /** @description Unauthorized */
@@ -2827,6 +3477,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    training_status_api_v1_tasks__task_id__training_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingStatus"];
                 };
             };
             /** @description Unauthorized */

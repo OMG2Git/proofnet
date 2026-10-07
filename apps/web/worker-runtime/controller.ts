@@ -36,6 +36,7 @@ export class WorkerController {
   private workerReady = false;
   private restarting = false;
   private cancelled = new Set<string>();
+  private hotUntil = 0; // poll quickly for a few seconds after finishing work (next round is near)
   private timer: ReturnType<typeof setTimeout> | null = null;
   private wake: WakeLockSentinelLike | null = null;
   private stopped = true;
@@ -236,7 +237,8 @@ export class WorkerController {
         }
         this.emit({}, `Directive "${d.type}" not handled yet`);
       }
-      this.scheduleHeartbeat(res.next_heartbeat_ms);
+      const hot = performance.now() < this.hotUntil;
+      this.scheduleHeartbeat(hot ? Math.min(res.next_heartbeat_ms, 400) : res.next_heartbeat_ms);
     } catch (e) {
       const wait = this.backoffMs;
       this.backoffMs = Math.min(this.backoffMs * 2, 30000);
@@ -302,6 +304,8 @@ export class WorkerController {
         { state: "idle", currentAssignmentId: null, stage: "Ready", completed: this.snap.completed + 1 },
         `Result accepted (${ack.acceptance ?? ack.status}); total ${Math.round(performance.now() - t0)} ms`,
       );
+      this.hotUntil = performance.now() + 5000;
+      this.scheduleHeartbeat(0);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (this.cancelled.has(a.assignment_id)) {
