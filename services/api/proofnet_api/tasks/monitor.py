@@ -150,12 +150,22 @@ def describe_event(e: dict[str, Any], names: dict[str, str], chunk_index: dict[s
         return f"{dev} started {chunk}"
     if t == "result_accepted":
         return f"{dev} finished {chunk} in {round(d.get('compute_ms') or 0)} ms"
+    code = d.get("code")
     if t == "assignment_rejected":
         return f"{dev}'s result for {chunk} was rejected: {d.get('message', 'invalid result')}"
     if t == "assignment_failed":
         return f"{dev} failed {chunk}: {d.get('message', 'error')}"
     if t == "assignment_expired":
-        return f"{dev} went offline - {chunk} will be reassigned"
+        why = {
+            "DEVICE_OFFLINE": f"{dev} went offline",
+            "DEADLINE": f"{dev} did not finish in time",
+            "SESSION_RESTARTED": f"{dev} restarted its worker",
+        }.get(str(code), f"{dev}'s assignment expired")
+        return f"{why} - {chunk} will be reassigned"
+    if t == "assignment_cancelled":
+        return f"{chunk.capitalize()} cancelled on {dev}"
+    if t == "chunk_requeued":
+        return f"{chunk.capitalize()} returned to the queue (attempt {d.get('attempt')}/{d.get('max_attempts')})"
     if t == "late_result":
         return f"Late result from {dev} for {chunk} ignored"
     if t == "task_aggregating":
@@ -165,6 +175,8 @@ def describe_event(e: dict[str, Any], names: dict[str, str], chunk_index: dict[s
         return "Task completed; reference check " + ("passed" if ok else "FAILED")
     if t == "task_failed":
         return f"Task failed: {d.get('error', '')}"
+    if t == "task_cancelled":
+        return "Task cancelled by the owner"
     return str(t).replace("_", " ")
 
 

@@ -18,6 +18,7 @@ from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from ..scheduling.lifecycle import cancel_task
 from ..scheduling.preview import build_plan_preview
 from .prepared import prime_prepared
 
@@ -167,3 +168,19 @@ async def get_task(task_id: str, db: DbDep, user: UserDep) -> TaskOut:
     if t is None:
         raise ProofNetError(404, "NOT_FOUND", "Task not found")
     return task_out(t)
+
+
+@router.post("/tasks/{task_id}/cancel", response_model=TaskOut)
+async def cancel_task_endpoint(task_id: str, db: DbDep, user: UserDep) -> TaskOut:
+    """Owner cancels a queued or running task: assignments are cancelled and workers are told to
+    stop on their next heartbeat (`cancel` directive)."""
+    t = await db.col("tasks").find_one({"_id": task_id, "owner_user_id": user["_id"]})
+    if t is None:
+        raise ProofNetError(404, "NOT_FOUND", "Task not found")
+    if t["status"] == "cancelled":
+        return task_out(t)  # idempotent
+    if not await cancel_task(db, task_id):
+        raise ProofNetError(409, "CONFLICT", f"A {t['status']} task cannot be cancelled")
+    fresh = await db.col("tasks").find_one({"_id": task_id})
+    assert fresh is not None
+    return task_out(fresh)

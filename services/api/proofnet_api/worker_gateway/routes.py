@@ -2,13 +2,14 @@
 
 from fastapi import APIRouter, Request, Response
 
-from ..contracts import Directive, HeartbeatRequest, HeartbeatResponse
+from ..contracts import CancelDirective, Directive, HeartbeatRequest, HeartbeatResponse
 from ..contracts.api import RuntimeManifest, SessionRequest, SessionResponse
 from ..db import utcnow
 from ..deps import DbDep, DeviceDep, SettingsDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from ..scheduling.lifecycle import release_attempt
 from .assignments import run_directive_for
 from .runtime import NUMPY_VERSION, PYODIDE_VERSION, KernelBundle
 
@@ -50,6 +51,20 @@ async def start_session(
 ) -> SessionResponse:
     if device["status"] == "disabled":
         raise ProofNetError(403, "DEVICE_DISABLED", "This device has been disabled by its owner")
+    # A new session means the worker lost any in-memory computation: running assignments
+    # cannot finish. (Assigned-but-not-started ones are simply dispatched to the new session.)
+    async for a in db.col("assignments").find({"device_id": device["_id"], "status": "running"}):
+        chunk = await db.col("chunks").find_one({"_id": a["chunk_id"]})
+        if chunk is not None:
+            await release_attempt(
+                db,
+                a,
+                chunk,
+                "expired",
+                {"code": "SESSION_RESTARTED", "message": "the worker restarted mid-chunk"},
+                ["running"],
+                device_stat="expired",
+            )
     session_id = new_id("ses")
     caps = {**device.get("capabilities", {}), **body.capabilities.model_dump(exclude_none=True)}
     await db.col("devices").update_one(
@@ -109,6 +124,15 @@ async def heartbeat(
             {"_id": device["_id"], "session_id": body.session_id}, {"$set": update}
         )
     directives: list[Directive] = []
+    if body.current_assignment_id:
+        held = await db.col("assignments").find_one({"_id": body.current_assignment_id})
+        if (
+            held is not None
+            and held["device_id"] == device["_id"]
+            and held["status"] in ("cancelled", "expired", "failed", "rejected")
+        ):
+            # The assignment was closed (cancel, expiry, ...): the worker must stop computing.
+            directives.append(CancelDirective(assignment_id=held["_id"]))
     run = await run_directive_for(db, device)
     if run is not None:
         directives.append(run)

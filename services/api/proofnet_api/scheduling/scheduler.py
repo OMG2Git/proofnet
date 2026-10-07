@@ -23,9 +23,16 @@ PLANNER: ChunkPlanner = WeightedProportionalPlanner()
 ASSIGNMENT_POLICY: AssignmentPolicy = OnePrimary()
 
 
-def deadline_seconds(est_seconds: float) -> float:
-    """ARCHITECTURE 11: clamp(4 x estimated_seconds, 60 s, 600 s)."""
-    return min(MAX_DEADLINE_S, max(MIN_DEADLINE_S, 4 * est_seconds))
+def deadline_seconds(
+    est_seconds: float, input_bytes: int = 0, min_bandwidth: int = 50_000
+) -> float:
+    """clamp(4 x estimated compute seconds + transfer allowance, 60 s, 600 s).
+
+    ARCHITECTURE 11 sizes the deadline from the compute estimate alone; chunk transfer dominates
+    on phones (a real run needed 110 s to download), so the input is allowed at least
+    `min_bandwidth` bytes/s on top."""
+    transfer = input_bytes / max(min_bandwidth, 1)
+    return min(MAX_DEADLINE_S, max(MIN_DEADLINE_S, 4 * est_seconds + transfer))
 
 
 async def _eligible_devices(
@@ -130,6 +137,7 @@ async def try_start_task(db: Db, settings: Settings, task: dict[str, Any]) -> bo
                 "excluded_device_ids": [],
                 "accepted_assignment_id": None,
                 "created_at": utcnow(),
+                "pending_since": utcnow(),
             }
         )
     await db.col("chunks").insert_many(chunks)
@@ -138,7 +146,7 @@ async def try_start_task(db: Db, settings: Settings, task: dict[str, Any]) -> bo
     res = await db.col("tasks").update_one(
         {"_id": task["_id"], "status": "queued"},
         {
-            "$set": {"status": "running", "plan": plan_doc},
+            "$set": {"status": "running", "plan": plan_doc, "started_at": now},
             "$push": {"status_history": {"status": "running", "at": now}},
         },
     )
@@ -166,11 +174,15 @@ async def try_assign_chunk(
     if task is None:
         return False
     excluded = chunk.get("excluded_device_ids", [])
+    pending_for = (now - (chunk.get("pending_since") or chunk["created_at"])).total_seconds()
     candidates = await _eligible_devices(
         db, settings, task, rows=chunk["n_rows"], excluded=excluded, now=now
     )
+    if not candidates and excluded and pending_for > settings.exclusion_relax_seconds:
+        # Nobody else can take it: a device that failed/lost it may retry (bounded by max_attempts).
+        candidates = await _eligible_devices(db, settings, task, rows=chunk["n_rows"], now=now)
     preferred = next((d for d in candidates if d["_id"] == chunk.get("preferred_device_id")), None)
-    waited = (now - chunk["created_at"]) > timedelta(seconds=settings.preferred_wait_seconds)
+    waited = pending_for > settings.preferred_wait_seconds
     if preferred is not None:
         ordered = [preferred]
     elif (
@@ -214,7 +226,14 @@ async def _create_assignment(
         "assigned_at": now,
         "started_at": None,
         "finished_at": None,
-        "deadline_at": now + timedelta(seconds=deadline_seconds(est)),
+        "deadline_at": now
+        + timedelta(
+            seconds=deadline_seconds(
+                est,
+                chunk["n_rows"] * (task["prepared"]["n_features"] + 1) * 8,
+                settings.min_bandwidth_bytes_per_s,
+            )
+        ),
         "timings": None,
         "runtime_fingerprint": None,
         "error": None,

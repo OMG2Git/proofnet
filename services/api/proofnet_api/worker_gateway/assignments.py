@@ -21,6 +21,7 @@ from ..deps import DbDep, DeviceDep, SettingsDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from ..scheduling.lifecycle import free_device, release_attempt
 from ..tasks.prepared import load_task_prepared
 from ..verification import DEFAULT_HOOK
 
@@ -135,64 +136,6 @@ def _validate_partial(
     return list(kernel.server.validate_partial(payload, chunk["n_rows"], n_features))
 
 
-async def _release_attempt(
-    db: Db,
-    asg: dict[str, Any],
-    chunk: dict[str, Any],
-    new_status: str,
-    error: dict[str, str],
-    from_status: list[str],
-    *,
-    device_stat: str,
-) -> bool:
-    """Assignment -> rejected/failed/expired; chunk -> pending (or failed); device -> idle."""
-    now = utcnow()
-    res = await db.col("assignments").update_one(
-        {"_id": asg["_id"], "status": {"$in": from_status}},
-        {"$set": {"status": new_status, "finished_at": now, "error": error}},
-    )
-    if not res.modified_count:
-        return False
-    exhausted = chunk["attempt_count"] >= chunk["max_attempts"]
-    if exhausted:
-        await db.col("chunks").update_one(
-            {"_id": chunk["_id"], "status": "assigned"}, {"$set": {"status": "failed"}}
-        )
-        t = await db.col("tasks").update_one(
-            {"_id": chunk["task_id"], "status": "running"},
-            {
-                "$set": {
-                    "status": "failed",
-                    "error": f"chunk {chunk['index']} failed after {chunk['attempt_count']} attempts: "
-                    f"{error.get('message', '')}",
-                },
-                "$push": {"status_history": {"status": "failed", "at": now}},
-            },
-        )
-        if t.modified_count:
-            await emit(db, "task_failed", task_id=chunk["task_id"], data={"error": error})
-    else:
-        await db.col("chunks").update_one(
-            {"_id": chunk["_id"], "status": "assigned"},
-            {"$set": {"status": "pending"}, "$addToSet": {"excluded_device_ids": asg["device_id"]}},
-        )
-    inc = {f"stats.{device_stat}": 1}
-    await db.col("devices").update_one(
-        {"_id": asg["device_id"], "current_assignment_id": asg["_id"]},
-        {"$set": {"status": "idle", "current_assignment_id": None}, "$inc": inc},
-    )
-    await emit(
-        db,
-        f"assignment_{new_status}",
-        task_id=asg["task_id"],
-        device_id=asg["device_id"],
-        chunk_id=chunk["_id"],
-        assignment_id=asg["_id"],
-        data=error,
-    )
-    return True
-
-
 @router.post("/{assignment_id}/result", response_model=ResultAck)
 async def submit_result(
     assignment_id: str,
@@ -264,7 +207,7 @@ async def submit_result(
 
     if errors:
         msg = "; ".join(errors)
-        await _release_attempt(
+        await release_attempt(
             db,
             asg,
             chunk,
@@ -299,14 +242,11 @@ async def submit_result(
         {"_id": chunk["_id"], "status": "assigned"},
         {"$set": {"status": "completed", "accepted_assignment_id": assignment_id}},
     )
-    cells = chunk["work_units"]
     await db.col("devices").update_one(
-        {"_id": device["_id"], "current_assignment_id": assignment_id},
-        {
-            "$set": {"status": "idle", "current_assignment_id": None},
-            "$inc": {"stats.succeeded": 1, "stats.cells_processed": cells},
-        },
+        {"_id": device["_id"]},
+        {"$inc": {"stats.cells_processed": chunk["work_units"]}},
     )
+    await free_device(db, device["_id"], assignment_id, stat="succeeded")
     await emit(
         db,
         "result_accepted",
@@ -348,7 +288,7 @@ async def fail_assignment(
         return ResultAck(assignment_id=assignment_id, status="failed")  # idempotent
     chunk = await db.col("chunks").find_one({"_id": asg["chunk_id"]})
     assert chunk is not None
-    ok = await _release_attempt(
+    ok = await release_attempt(
         db,
         asg,
         chunk,

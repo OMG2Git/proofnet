@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     preferred_wait_seconds: int = 10
     queue_timeout_seconds: int = 600
     task_timeout_seconds: int = 900
+    # An excluded device (it already failed/lost this chunk) may retry it after this long
+    # if nobody else is eligible; attempts stay bounded by max_attempts.
+    exclusion_relax_seconds: int = 15
+    # Slowest transfer a phone is expected to sustain; used to size assignment deadlines.
+    min_bandwidth_bytes_per_s: int = 50_000
 
     @property
     def cors_origin_list(self) -> list[str]:

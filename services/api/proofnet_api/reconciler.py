@@ -12,6 +12,7 @@ from .aggregation.service import aggregate_task, release_stale_claims
 from .config import Settings
 from .db import Db, utcnow
 from .events import emit
+from .scheduling.lifecycle import expire_assignments, expire_tasks
 from .scheduling.scheduler import schedule_pass
 
 log = logging.getLogger("proofnet.reconciler")
@@ -45,9 +46,10 @@ async def resume_aggregations(db: Db) -> None:
 
 async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> None:
     await mark_offline_devices(db, settings, now)
+    await expire_assignments(db, settings, now)  # deadlines, offline devices -> retry
+    await expire_tasks(db, settings, now)  # queue and task timeouts
     await schedule_pass(db, settings)
     await resume_aggregations(db)
-    # P6 adds: lease/deadline expiry, retries, queue/task timeouts.
 
 
 async def run_forever(db: Db, settings: Settings) -> None:
