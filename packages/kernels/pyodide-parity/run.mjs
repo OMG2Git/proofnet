@@ -22,14 +22,20 @@ const out = py.runPython(`
 import sys, json, platform
 sys.path.insert(0, "/pk")
 import numpy as np
-from proofnet_kernels.core import gaussian_nb, linear_ridge, bench
+from proofnet_kernels.core import gaussian_nb, linear_ridge, bench, cnn
 z = np.load("/chunks.npz", allow_pickle=False)
 res = {
   "gnb": gaussian_nb.map(z["X"], z["y_cls"], int(z["n_classes"])),
   "ridge": linear_ridge.map(z["X"], z["y_reg"]),
   "runtime": {"python": platform.python_version(), "numpy": np.__version__},
+  "cnn": cnn.map(z["X_img"], z["y_img"], z["w_img"], json.loads(bytes(z["arch_json"]).decode())),
+  "cnn_ms": None,
   "bench": bench.run(),
 }
+import time as _t
+_t0 = _t.perf_counter()
+cnn.map(z["X_img"], z["y_img"], z["w_img"], json.loads(bytes(z["arch_json"]).decode()))
+res["cnn_ms"] = (_t.perf_counter() - _t0) * 1000.0
 json.dumps(res, allow_nan=False)
 `);
 writeFileSync(join(work, "pyodide_out.json"), out);

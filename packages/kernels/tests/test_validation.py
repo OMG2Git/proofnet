@@ -109,7 +109,7 @@ def test_prepare_is_deterministic_and_pickle_free() -> None:
 
 
 def test_registry() -> None:
-    assert set(REGISTRY) == {"gaussian_nb_train@1", "linear_ridge_train@1"}
+    assert set(REGISTRY) == {"gaussian_nb_train@1", "linear_ridge_train@1", "cnn_image_train@1"}
     with pytest.raises(KeyError):
         get_kernel("evil@1")
 

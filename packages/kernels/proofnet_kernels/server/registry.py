@@ -3,8 +3,10 @@
 from dataclasses import dataclass
 from types import ModuleType
 
+from ..core import cnn as core_cnn
 from ..core import gaussian_nb as core_gnb
 from ..core import linear_ridge as core_ridge
+from . import cnn as server_cnn
 from . import gaussian_nb, linear_ridge
 
 
@@ -25,6 +27,7 @@ REGISTRY: dict[str, Kernel] = {
     for k in (
         Kernel("gaussian_nb_train", "1", core_gnb, gaussian_nb),
         Kernel("linear_ridge_train", "1", core_ridge, linear_ridge),
+        Kernel("cnn_image_train", "1", core_cnn, server_cnn),
     )
 }
 

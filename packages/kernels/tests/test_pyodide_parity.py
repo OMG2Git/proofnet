@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from proofnet_kernels.core import gaussian_nb, linear_ridge
+from proofnet_kernels.core import cnn, gaussian_nb, linear_ridge
 from proofnet_kernels.server import gaussian_nb as srv_gnb
 from proofnet_kernels.server import linear_ridge as srv_ridge
 
@@ -26,7 +26,21 @@ def test_pyodide_matches_cpython(tmp_path: Path) -> None:
     y_cls = rng.integers(0, c, size=n)
     x = rng.normal(size=(n, d)) * rng.uniform(0.5, 4, size=d) + y_cls[:, None] * 0.5 + 1e3
     y_reg = x @ rng.normal(size=d) + rng.normal(scale=0.2, size=n)
-    np.savez(tmp_path / "chunks.npz", X=x, y_cls=y_cls, y_reg=y_reg, n_classes=c)
+    arch = {"input": [28, 28, 1], "conv1": 8, "conv2": 16, "dense": 64, "classes": 10}
+    x_img = rng.integers(0, 256, size=(64, 28, 28, 1)).astype(np.uint8)
+    y_img = rng.integers(0, 10, size=64)
+    w_img = cnn.init_weights(arch, 0)
+    np.savez(
+        tmp_path / "chunks.npz",
+        X=x,
+        y_cls=y_cls,
+        y_reg=y_reg,
+        n_classes=c,
+        X_img=x_img,
+        y_img=y_img,
+        w_img=w_img,
+        arch_json=np.frombuffer(json.dumps(arch).encode(), dtype=np.uint8),
+    )
 
     subprocess.run(
         ["node", "run.mjs", str(tmp_path)], cwd=PARITY_DIR, check=True, timeout=600, text=True
@@ -40,11 +54,22 @@ def test_pyodide_matches_cpython(tmp_path: Path) -> None:
     # Integer counts must match exactly.
     assert out["gnb"]["classes"]["n"] == gaussian_nb.map(x, y_cls, c)["classes"]["n"]
 
+    # CNN gradient: float32 BLAS differs between native NumPy and WASM, so compare with a tolerance
+    g_py = cnn.decode_vector(out["cnn"]["grad_b64"], "<f4").astype(np.float64)
+    g_cp = cnn.decode_vector(cnn.map(x_img, y_img, w_img, arch)["grad_b64"], "<f4").astype(
+        np.float64
+    )
+    cnn_rel = float(np.abs(g_py - g_cp).max() / np.abs(g_cp).max())
+    assert cnn_rel < 1e-4, cnn_rel
+    assert out["cnn"]["correct"] == cnn.map(x_img, y_img, w_img, arch)["correct"]
+
     LOG.write_text(
         json.dumps(
             {
                 "gaussian_nb_max_rel_diff": cmp_gnb["max_rel_diff"],
                 "linear_ridge_max_rel_diff": cmp_ridge["max_rel_diff"],
+                "cnn_gradient_max_rel_diff": cnn_rel,
+                "cnn_pyodide_ms_for_64_images": out["cnn_ms"],
                 "pyodide_runtime": out["runtime"],
                 "pyodide_bench_cells_per_sec": out["bench"]["score_cells_per_sec"],
             },
