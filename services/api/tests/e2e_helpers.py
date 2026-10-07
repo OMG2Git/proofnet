@@ -145,3 +145,55 @@ def assert_one_active_assignment_per_device(env: Env) -> None:
         for prev, nxt in zip(asgs, asgs[1:], strict=False):
             assert prev["finished_at"] is not None, (dev, prev["_id"])
             assert nxt["assigned_at"] >= prev["finished_at"], f"{dev} overlapped assignments"
+
+
+import hashlib  # noqa: E402
+import io  # noqa: E402
+
+
+def result_body(w: Worker, a: dict[str, Any], client: TestClient) -> dict[str, Any]:
+    from proofnet_kernels.core import gaussian_nb
+    from proofnet_kernels.core.serialize import payload_sha256
+
+    raw = client.get(V1 + a["input_url"].removeprefix("/api/v1"), headers=w._dev()).content
+    assert hashlib.sha256(raw).hexdigest() == a["input_sha256"]
+    with np.load(io.BytesIO(raw), allow_pickle=False) as z:
+        payload = gaussian_nb.map(z["X"], z["y"], a["params"]["n_classes"])
+    return {
+        "kernel": a["kernel"],
+        "kernel_version": a["kernel_version"],
+        "input_sha256": a["input_sha256"],
+        "n_rows": a["n_rows"],
+        "payload": payload,
+        "payload_sha256": payload_sha256(payload),
+        "timings": {"download_ms": 1.0, "compute_ms": 2.0, "total_ms": 3.0},
+        "runtime": {"kind": "cpython", "python": "3.12", "numpy": "2.4.6", "bundle": "1"},
+    }
+
+
+def raw_dispatch(client: TestClient, w: Worker, timeout: float = 30) -> dict[str, Any]:
+    """Heartbeat as `w` (without executing) until the run directive arrives; returns the assignment."""
+    end = time.time() + timeout
+    while time.time() < end:
+        hb = client.post(
+            f"{V1}/worker/heartbeat",
+            headers=w._dev(),
+            json={"session_id": w.session_id, "state": "idle"},
+        ).json()
+        runs = [d for d in hb["directives"] if d["type"] == "run"]
+        if runs:
+            return cast(dict[str, Any], runs[0]["assignment"])
+        time.sleep(0.2)
+    raise AssertionError("no run directive arrived")
+
+
+def heartbeat_holding(
+    client: TestClient, w: Worker, assignment_id: str | None, state: str = "busy"
+) -> dict[str, Any]:
+    hb = client.post(
+        f"{V1}/worker/heartbeat",
+        headers=w._dev(),
+        json={"session_id": w.session_id, "state": state, "current_assignment_id": assignment_id},
+    )
+    assert hb.status_code == 200, hb.text
+    return cast(dict[str, Any], hb.json())

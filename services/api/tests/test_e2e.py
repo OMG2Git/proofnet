@@ -21,6 +21,7 @@ from e2e_helpers import (
     make_worker,
     manifest,
     reg_csv,
+    result_body,
     status,
     upload,
 )
@@ -181,32 +182,12 @@ def _dispatch_one(
     raise AssertionError("no run directive arrived")
 
 
-def _result_body(w: Worker, a: dict[str, Any], client: TestClient) -> dict[str, Any]:
-    from proofnet_kernels.core import gaussian_nb
-    from proofnet_kernels.core.serialize import payload_sha256
-
-    raw = client.get(V1 + a["input_url"].removeprefix("/api/v1"), headers=w._dev()).content
-    assert hashlib.sha256(raw).hexdigest() == a["input_sha256"]
-    with np.load(io.BytesIO(raw), allow_pickle=False) as z:
-        payload = gaussian_nb.map(z["X"], z["y"], a["params"]["n_classes"])
-    return {
-        "kernel": a["kernel"],
-        "kernel_version": a["kernel_version"],
-        "input_sha256": a["input_sha256"],
-        "n_rows": a["n_rows"],
-        "payload": payload,
-        "payload_sha256": payload_sha256(payload),
-        "timings": {"download_ms": 1.0, "compute_ms": 2.0, "total_ms": 3.0},
-        "runtime": {"kind": "cpython", "python": "3.12", "numpy": "2.4.6", "bundle": "1"},
-    }
-
-
 def test_duplicate_result_is_idempotent(env: Env) -> None:
     client, h, w, a, tid = _dispatch_one(env, "dup@example.com")
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
     assert client.post(f"{base}/start", headers=w._dev()).status_code == 200
     assert client.post(f"{base}/start", headers=w._dev()).status_code == 200  # idempotent start
-    body = _result_body(w, a, client)
+    body = result_body(w, a, client)
     first = client.post(f"{base}/result", headers=w._dev(), json=body)
     again = client.post(f"{base}/result", headers=w._dev(), json=body)
     assert first.status_code == 200 and again.status_code == 200
@@ -226,7 +207,7 @@ def test_invalid_result_is_rejected_and_counted(env: Env) -> None:
     _, mongo, s = env
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
     client.post(f"{base}/start", headers=w._dev())
-    body = _result_body(w, a, client)
+    body = result_body(w, a, client)
     body["payload"]["classes"]["n"][0] += 5  # counts no longer match the chunk
     from proofnet_kernels.core.serialize import payload_sha256
 
@@ -250,7 +231,7 @@ def test_payload_digest_mismatch_rejected(env: Env) -> None:
     client, _, w, a, _ = _dispatch_one(env, "digest@example.com")
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
     client.post(f"{base}/start", headers=w._dev())
-    body = _result_body(w, a, client)
+    body = result_body(w, a, client)
     body["payload_sha256"] = "f" * 64
     r = client.post(f"{base}/result", headers=w._dev(), json=body)
     assert r.status_code == 422 and "payload_sha256 mismatch" in str(r.json()["error"]["details"])
@@ -278,7 +259,7 @@ def test_late_result_after_failure_is_409_and_logged(
     _, mongo, s = env
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
     client.post(f"{base}/start", headers=w._dev())
-    body = _result_body(w, a, client)
+    body = result_body(w, a, client)
     assert (
         client.post(
             f"{base}/fail", headers=w._dev(), json={"code": "X", "message": "boom"}

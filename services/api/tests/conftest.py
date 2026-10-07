@@ -72,3 +72,37 @@ def env() -> Iterator[tuple[TestClient, MongoClient[dict[str, Any]], Settings]]:
     finally:
         mongo.drop_database(s.mongodb_db)
         mongo.close()
+
+
+def _make_env(**over: Any) -> Iterator[tuple[TestClient, MongoClient[dict[str, Any]], Settings]]:
+    s = Settings(
+        mongodb_uri=_BASE.mongodb_uri,
+        mongodb_db=f"proofnet_test_rel_{secrets.token_hex(4)}",
+        jwt_secret="test-secret-test-secret-test-secret-123",
+        status_cache_seconds=0,
+        reconciler_interval_seconds=1,
+        **over,
+    )
+    mongo: MongoClient[dict[str, Any]] = MongoClient(s.mongodb_uri, tz_aware=True)
+    try:
+        with TestClient(create_app(s)) as c:
+            yield c, mongo, s
+    finally:
+        mongo.drop_database(s.mongodb_db)
+        mongo.close()
+
+
+@pytest.fixture(scope="module")
+def fast_env() -> Iterator[tuple[TestClient, MongoClient[dict[str, Any]], Settings]]:
+    """Short timeouts so failure handling can be exercised in seconds."""
+    yield from _make_env(
+        offline_after_seconds=2,
+        exclusion_relax_seconds=2,
+        preferred_wait_seconds=1,
+        queue_timeout_seconds=4,
+    )
+
+
+@pytest.fixture(scope="module")
+def timeout_env() -> Iterator[tuple[TestClient, MongoClient[dict[str, Any]], Settings]]:
+    yield from _make_env(offline_after_seconds=30, task_timeout_seconds=3)

@@ -12,9 +12,11 @@ import json
 import logging
 import os
 import platform
+import random
 import threading
 import time
 import zipfile
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -31,6 +33,27 @@ BUNDLE_VERSION = "1"
 
 class WorkerError(RuntimeError):
     pass
+
+
+@dataclass
+class Faults:
+    """Fault injection for reliability tests (these grow into Part 2 attack modes)."""
+
+    fail_rate: float = 0.0  # probability of reporting a failure instead of a result
+    delay_ms: int = 0  # sleep before computing (slow device)
+    die_after_start: bool = False  # after /start: vanish (no result, no more heartbeats)
+    corrupt_result: bool = False  # well-formed but wrong statistics (counts do not match)
+    late_result_ms: int = 0  # hold the result back this long before posting it
+    seed: int | None = None
+
+    def active(self) -> bool:
+        return bool(
+            self.fail_rate
+            or self.delay_ms
+            or self.die_after_start
+            or self.corrupt_result
+            or self.late_result_ms
+        )
 
 
 def _json(r: httpx.Response) -> Any:
@@ -88,6 +111,7 @@ class Worker:
         state: StateFile | None = None,
         state_key: str | None = None,
         device_type: str = "laptop",
+        faults: Faults | None = None,
     ) -> None:
         self.http = client
         self.user_token = user_token
@@ -101,7 +125,11 @@ class Worker:
         self.state_name = "initializing"
         self.heartbeat_ms = {"idle": 2000, "busy": 5000}
         self.score: float | None = None
+        self.current_assignment_id: str | None = None
         self.stop = threading.Event()
+        self.faults = faults or Faults()
+        self.dead = False  # set by die_after_start: the worker has vanished
+        self._rng = random.Random(self.faults.seed)
 
     # ---- auth helpers ----
     def _user(self) -> dict[str, str]:
@@ -184,10 +212,16 @@ class Worker:
         log.info("[%s] session %s, score %.2e cells/s", self.name, self.session_id, self.score)
 
     def heartbeat_once(self) -> dict[str, Any]:
+        if self.dead:
+            return {"directives": []}
         r = self.http.post(
             "/worker/heartbeat",
             headers=self._dev(),
-            json={"session_id": self.session_id, "state": self.state_name},
+            json={
+                "session_id": self.session_id,
+                "state": self.state_name,
+                "current_assignment_id": self.current_assignment_id,
+            },
         )
         body: dict[str, Any] = _json(r)
         for d in body["directives"]:
@@ -196,6 +230,8 @@ class Worker:
                 self.start_session(self.load_runtime())
             elif d["type"] == "run":
                 self.execute(d["assignment"])
+            elif d["type"] == "cancel":
+                log.info("[%s] cancel for %s (nothing running)", self.name, d["assignment_id"])
             else:
                 log.info("[%s] directive %s not handled yet", self.name, d["type"])
         return body
@@ -205,9 +241,19 @@ class Worker:
         asg_id = a["assignment_id"]
         base = f"/worker/assignments/{asg_id}"
         self.state_name = "busy"
+        self.current_assignment_id = asg_id
         t_total = time.perf_counter()
         try:
             _json(self.http.post(f"{base}/start", headers=self._dev()))
+            if self.faults.die_after_start:  # vanish: no result, no failure report, no heartbeats
+                self.dead = True
+                self.stop.set()
+                log.warning("[%s] FAULT: dying after start of %s", self.name, asg_id)
+                return
+            if self.faults.fail_rate and self._rng.random() < self.faults.fail_rate:
+                raise WorkerError("injected failure")
+            if self.faults.delay_ms:
+                time.sleep(self.faults.delay_ms / 1000)
             t0 = time.perf_counter()
             r = self.http.get(a["input_url"], headers=self._dev())
             if r.status_code != 200:
@@ -227,6 +273,11 @@ class Worker:
             else:
                 raise WorkerError(f"unknown kernel {a['kernel']}")
             compute_ms = (time.perf_counter() - t1) * 1000
+            if self.faults.corrupt_result:  # plausible-looking but wrong
+                if a["kernel"] == "gaussian_nb_train":
+                    payload["classes"]["n"][0] += 7
+                else:
+                    payload["n"] += 7
             body = {
                 "kernel": a["kernel"],
                 "kernel_version": a["kernel_version"],
@@ -246,6 +297,8 @@ class Worker:
                     "bundle": BUNDLE_VERSION,
                 },
             }
+            if self.faults.late_result_ms:
+                time.sleep(self.faults.late_result_ms / 1000)
             _json(self.http.post(f"{base}/result", headers=self._dev(), json=body))
             log.info(
                 "[%s] assignment %s done (%d rows, %.0f ms)",
@@ -263,7 +316,9 @@ class Worker:
                     json={"code": "EXECUTION_ERROR", "message": str(e)[:500]},
                 )
         finally:
-            self.state_name = "idle"
+            if not self.dead:
+                self.state_name = "idle"
+                self.current_assignment_id = None
 
     # ---- main loop ----
     def run(self, max_seconds: float | None = None) -> None:
