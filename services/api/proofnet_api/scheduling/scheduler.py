@@ -14,12 +14,12 @@ from ..db import Db, utcnow
 from ..events import emit
 from ..ids import new_id
 from ..tasks.prepared import load_task_prepared
-from .planner import ChunkPlanner, SingleChunkPlanner
+from .planner import MIN_CHUNK_ROWS, ChunkPlanner, Plan, WeightedProportionalPlanner
 from .policies import AssignmentPolicy, OnePrimary, is_eligible
 
 MIN_DEADLINE_S, MAX_DEADLINE_S = 60.0, 600.0
 
-PLANNER: ChunkPlanner = SingleChunkPlanner()
+PLANNER: ChunkPlanner = WeightedProportionalPlanner()
 ASSIGNMENT_POLICY: AssignmentPolicy = OnePrimary()
 
 
@@ -54,19 +54,63 @@ async def _eligible_devices(
     ]
 
 
+def plan_document(plan: Plan, devices: list[dict[str, Any]], n_rows: int) -> dict[str, Any]:
+    """The plan as stored on the task and shown to the evaluator (with the reasoning)."""
+    names = {d["_id"]: d["name"] for d in devices}
+    return {
+        "planner": type(PLANNER).__name__,
+        "n_rows": n_rows,
+        "explanation": (
+            "rows are split in proportion to each device's measured benchmark score "
+            "(cells/s); weight = score / sum(scores of the chosen devices)"
+        ),
+        "shares": [
+            {
+                "device_id": sh.device_id,
+                "device_name": names.get(sh.device_id),
+                "score_cells_per_sec": sh.score,
+                "weight": sh.weight,
+                "rows": sh.rows,
+                "n_chunks": sh.n_chunks,
+                "est_seconds": sh.est_seconds,
+            }
+            for sh in plan.shares
+        ],
+        "chunks": [
+            {
+                "index": c.index,
+                "device_id": c.preferred_device_id,
+                "row_start": c.row_start,
+                "row_end": c.row_end,
+                "est_seconds": c.est_seconds,
+            }
+            for c in plan.chunks
+        ],
+    }
+
+
+async def planning_devices(
+    db: Db, settings: Settings, task: dict[str, Any], now: datetime | None = None
+) -> list[dict[str, Any]]:
+    """Eligible devices for planning. The memory check uses MIN_CHUNK_ROWS because an oversized
+    share is split into several chunks rather than excluding the device (ARCHITECTURE 6.2)."""
+    return await _eligible_devices(db, settings, task, rows=MIN_CHUNK_ROWS, now=now)
+
+
 async def try_start_task(db: Db, settings: Settings, task: dict[str, Any]) -> bool:
-    """queued -> running: plan chunks when enough eligible devices exist."""
+    """queued -> running when the start policy is satisfied (>= min_devices eligible devices)."""
     n_train, n_features = task["prepared"]["n_train"], task["prepared"]["n_features"]
-    if task["execution"]["min_devices"] > 1:
-        return False  # multi-device planning arrives in P5; the task waits (queue timeout applies)
-    devices = await _eligible_devices(db, settings, task, rows=n_train)
-    planned = PLANNER.plan(n_train, n_features, devices)
-    if not planned:
+    execution = task["execution"]
+    devices = await planning_devices(db, settings, task)
+    if len(devices) < execution["min_devices"]:
+        return False  # wait_for_min_devices
+    plan = PLANNER.plan(n_train, n_features, devices, execution["max_devices"])
+    if not plan.chunks:
         return False
 
     prepared = await load_task_prepared(db, task)
     chunks: list[dict[str, Any]] = []
-    for p in planned:
+    for p in plan.chunks:
         data = await asyncio.to_thread(prepared.chunk_npz_bytes, p.row_start, p.row_end)
         chunks.append(
             {
@@ -90,23 +134,11 @@ async def try_start_task(db: Db, settings: Settings, task: dict[str, Any]) -> bo
         )
     await db.col("chunks").insert_many(chunks)
     now = utcnow()
-    plan = {
-        "created_at": now,
-        "planner": type(PLANNER).__name__,
-        "shares": [
-            {
-                "device_id": p.preferred_device_id,
-                "chunk_index": p.index,
-                "rows": p.n_rows,
-                "est_seconds": p.est_seconds,
-            }
-            for p in planned
-        ],
-    }
+    plan_doc = {"created_at": now, **plan_document(plan, devices, n_train)}
     res = await db.col("tasks").update_one(
         {"_id": task["_id"], "status": "queued"},
         {
-            "$set": {"status": "running", "plan": plan},
+            "$set": {"status": "running", "plan": plan_doc},
             "$push": {"status_history": {"status": "running", "at": now}},
         },
     )
@@ -117,7 +149,11 @@ async def try_start_task(db: Db, settings: Settings, task: dict[str, Any]) -> bo
         db,
         "task_started",
         task_id=task["_id"],
-        data={"chunks": len(chunks), "devices": [p.preferred_device_id for p in planned]},
+        data={
+            "chunks": len(chunks),
+            "devices": [sh["device_name"] for sh in plan_doc["shares"]],
+            "rows_per_device": {sh["device_name"]: sh["rows"] for sh in plan_doc["shares"]},
+        },
     )
     return True
 
