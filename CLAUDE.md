@@ -41,7 +41,7 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
 6. Part 2 only after M3 (offline research may run in parallel).
 
-Current phase: **P5 (M2)** — P0–P4 completed. **M1 passed 2026-10-07**: three consecutive successful runs on a real Android phone (OPPO F31 Pro+ 5G) on the deployed stack (GNB, Ridge, GNB), reference check PASSED each time, no manual DB edits. Update this line as phases complete.
+Current phase: **P5 (M2)** — P0–P4 completed (M1 passed 2026-10-07). P5 implemented and verified with CLI workers (2/3/4 devices with unequal scores, `min_devices` waiting, busy/offline exclusion, memory-cap splitting, plan preview, stress: 10 tasks over 8 workers) and with two real browser (Pyodide) workers locally (60.7%/39.3% split by measured score, reference PASSED 9.6e-15). **Remaining for the M2 gate: two real Android phones each compute a different chunk of one task on the deployed stack, result passes the reference check.** Update this line as phases complete.
 
 ---
 
