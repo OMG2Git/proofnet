@@ -13,3 +13,4 @@ datasets/generated/
 dist/
 packages/kernels/pyodide-parity/last_discrepancy.json
 apps/web/public/compute.worker.js
+*.tsbuildinfo
