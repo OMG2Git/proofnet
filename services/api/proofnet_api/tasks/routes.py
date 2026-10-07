@@ -59,6 +59,22 @@ def task_out(t: dict[str, Any]) -> TaskOut:
         error=t.get("error"),
         verification_policy=t["verification_policy"],
         created_at=t["created_at"],
+        training=(
+            {
+                k: t["training"][k]
+                for k in (
+                    "steps",
+                    "round",
+                    "state",
+                    "global_batch_size",
+                    "learning_rate",
+                    "n_params",
+                )
+                if k in t["training"]
+            }
+            if t.get("training")
+            else None
+        ),
     )
 
 

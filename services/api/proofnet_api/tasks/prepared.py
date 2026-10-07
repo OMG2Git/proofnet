@@ -9,6 +9,7 @@ import io
 from collections import OrderedDict
 from typing import Any
 
+from proofnet_kernels.server.cnn import ImagePrepared, load_image_prepared
 from proofnet_kernels.server.common import PreparedData, load_prepared
 
 from ..db import Db
@@ -44,4 +45,35 @@ async def load_task_prepared(db: Db, task: dict[str, Any]) -> PreparedData:
         load_prepared, buf.getvalue(), prep["feature_names"], prep["class_labels"]
     )
     prime_prepared(task["_id"], loaded)
+    return loaded
+
+
+_img_cache: OrderedDict[str, tuple[ImagePrepared, int]] = OrderedDict()
+
+
+def _img_bytes(p: ImagePrepared) -> int:
+    return int(p.x_train.nbytes + p.y_train.nbytes + p.x_test.nbytes + p.y_test.nbytes)
+
+
+def prime_images(task_id: str, prepared: ImagePrepared) -> None:
+    size = _img_bytes(prepared)
+    if size > CACHE_MAX_BYTES:
+        return
+    _img_cache.pop(task_id, None)
+    _img_cache[task_id] = (prepared, size)
+    while sum(s for _, s in _img_cache.values()) > CACHE_MAX_BYTES:
+        _img_cache.popitem(last=False)
+
+
+async def load_task_images(db: Db, task: dict[str, Any]) -> ImagePrepared:
+    """Prepared image data of a CNN task (uint8 arrays; never pickled)."""
+    hit = _img_cache.get(task["_id"])
+    if hit is not None:
+        _img_cache.move_to_end(task["_id"])
+        return hit[0]
+    prep = task["prepared"]
+    buf = io.BytesIO()
+    await db.fs.download_to_stream(prep["file_id"], buf)
+    loaded = await asyncio.to_thread(load_image_prepared, buf.getvalue(), prep["class_labels"])
+    prime_images(task["_id"], loaded)
     return loaded

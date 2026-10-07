@@ -51,3 +51,12 @@ async def ensure_indexes(h: Db) -> None:
     await h.col("assignments").create_index([("device_id", ASCENDING), ("status", ASCENDING)])
     await h.col("assignments").create_index("chunk_id")
     await h.col("events").create_index([("task_id", ASCENDING), ("ts", ASCENDING)])
+    await h.col("image_datasets").create_index("owner_user_id")
+    await h.col("training_rounds").create_index([("task_id", ASCENDING), ("round", ASCENDING)])
+    await h.col("model_states").create_index("task_id")
+    # iterative tasks create one chunk set per round; (task, round, index) must be unique
+    await h.col("chunks").create_index(
+        [("task_id", ASCENDING), ("round", ASCENDING), ("index", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"round": {"$exists": True}},
+    )

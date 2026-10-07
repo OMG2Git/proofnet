@@ -22,7 +22,7 @@ from proofnet_kernels.server.registry import get_kernel
 from ..db import Db, utcnow
 from ..events import emit
 from ..ids import new_id
-from ..tasks.prepared import load_task_prepared
+from ..tasks.prepared import load_task_images, load_task_prepared
 from ..verification import ACCEPTED_UNVERIFIED
 
 CLAIM_STALE_SECONDS = 120
@@ -112,8 +112,182 @@ async def aggregate_task(db: Db, task_id: str) -> bool:
         return False
 
 
+async def _store_artifacts(db: Db, task_id: str, files: list[tuple[str, str, bytes]]) -> list[str]:
+    ids: list[str] = []
+    for kind, filename, data in files:
+        file_id = await db.fs.upload_from_stream(
+            f"{task_id}_{filename}", data, metadata={"kind": "artifact", "task_id": task_id}
+        )
+        art_id = new_id("art")
+        await db.col("artifacts").insert_one(
+            {
+                "_id": art_id,
+                "task_id": task_id,
+                "kind": kind,
+                "filename": filename,
+                "file_id": file_id,
+                "size_bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "created_at": utcnow(),
+            }
+        )
+        ids.append(art_id)
+    return ids
+
+
+async def _aggregate_cnn(db: Db, task: dict[str, Any]) -> bool:
+    """Final step of an iterative CNN task: evaluate the final model on the aggregator-held holdout,
+    summarise the training run and the centralized gradient checks, store artifacts."""
+    import csv
+    import json
+
+    from proofnet_kernels.server import cnn as cnn_srv
+
+    from ..training.service import load_state
+
+    task_id = task["_id"]
+    tr = task["training"]
+    arch = tr["arch"]
+    prepared = await load_task_images(db, task)
+    w, _ = await load_state(db, task_id, tr["steps"])
+    metrics, pred = await asyncio.to_thread(cnn_srv.evaluate, w, prepared, arch)
+    arts = cnn_srv.model_artifacts(w, arch, prepared.class_names)
+
+    rounds = [
+        r async for r in db.col("training_rounds").find({"task_id": task_id}).sort("round", 1)
+    ]
+    names = prepared.class_names
+    pbuf = io.StringIO()
+    pw = csv.writer(pbuf, lineterminator="\n")
+    pw.writerow(["row", "y_true", "y_pred"])
+    for i, (yt, yp) in enumerate(zip(prepared.y_test, pred, strict=True)):
+        pw.writerow([i, names[int(yt)], names[int(yp)]])
+    cbuf = io.StringIO()
+    cw = csv.writer(cbuf, lineterminator="\n")
+    cw.writerow(["round", "loss", "batch_accuracy", "devices", "max_compute_ms"])
+    for r in rounds:
+        comp = [d.get("compute_ms") or 0 for d in r["devices"]]
+        cw.writerow(
+            [
+                r["round"],
+                r["loss"],
+                r["accuracy"],
+                len(r["devices"]),
+                round(max(comp), 1) if comp else 0,
+            ]
+        )
+
+    contrib: dict[str, dict[str, Any]] = {}
+    for r in rounds:
+        for d in r["devices"]:
+            c = contrib.setdefault(
+                d["device_id"],
+                {"device_id": d["device_id"], "device_name": d["name"], "rounds": 0, "rows": 0,
+                 "compute_ms_total": 0.0, "download_ms_total": 0.0},
+            )  # fmt: skip
+            c["rounds"] += 1
+            c["rows"] += d["rows"]
+            c["compute_ms_total"] += d.get("compute_ms") or 0
+            c["download_ms_total"] += d.get("download_ms") or 0
+    verifs = [r["verification"] for r in rounds if r.get("verification")]
+    ref = {
+        "description": "per-round gradient sums from the devices vs centralized recomputation of "
+        "the same global batch (verified on sampled rounds)",
+        "verified_rounds": [v["round"] for v in verifs],
+        "max_relative_difference": max((v["max_rel_diff"] for v in verifs), default=None),
+        "tolerance": cnn_srv.GRADIENT_TOLERANCE,
+        "passed": all(v["within_tolerance"] for v in verifs) if verifs else None,
+    }
+    n_train = task["prepared"]["n_train"]
+    training_summary = {
+        "steps": tr["steps"],
+        "global_batch_size": tr["global_batch_size"],
+        "epochs": round(tr["steps"] * tr["global_batch_size"] / n_train, 2),
+        "learning_rate": tr["learning_rate"],
+        "momentum": tr["momentum"],
+        "n_params": tr["n_params"],
+        "first_loss": rounds[0]["loss"] if rounds else None,
+        "final_loss": rounds[-1]["loss"] if rounds else None,
+    }
+    report = {
+        "task": {
+            "id": task_id,
+            "name": task["name"],
+            "task_type": task["task_type"],
+            "kernel_version": task["kernel_version"],
+            "params": task["params"],
+            "execution": task["execution"],
+        },
+        "architecture": arch,
+        "training": training_summary,
+        "data": {
+            "n_train": n_train,
+            "n_test": task["prepared"]["n_test"],
+            "image_shape": task["prepared"]["image_shape"],
+            "class_names": names,
+            "prepared_sha256": task["prepared"]["sha256"],
+        },
+        "plan": task.get("plan"),
+        "contributions": sorted(contrib.values(), key=lambda c: -c["rows"]),
+        "metrics": {
+            **{k: v for k, v in metrics.items() if k != "class_names"},
+            "computed_by": "aggregator (holdout evaluation of the final model, not distributed)",
+        },
+        "reference_check": ref,
+        "gradient_verifications": verifs,
+        "versions": {
+            "numpy": np.__version__,
+            "python": sys.version.split()[0],
+            "platform": platform.platform(),
+        },
+        "acceptance": ACCEPTED_UNVERIFIED,
+        "limitations": LIMITATIONS
+        + [
+            "Contributors saw the training images of the mini-batches they computed on.",
+            "Only sampled rounds are re-checked against a centralized gradient; other rounds "
+            "are accepted unverified.",
+        ],
+        "generated_at": utcnow().isoformat(),
+    }
+    files: list[tuple[str, str, bytes]] = [
+        ("model_npz", "model.npz", arts["model.npz"]),
+        ("model_json", "model.json", arts["model.json"]),
+        ("inference_py", "inference.py", arts["inference.py"]),
+        ("predictions_csv", "predictions.csv", pbuf.getvalue().encode()),
+        ("training_curve_csv", "training_curve.csv", cbuf.getvalue().encode()),
+    ]
+    report["artifact_digests"] = {n: hashlib.sha256(b).hexdigest() for _, n, b in files}
+    files.append(("report_json", "report.json", json.dumps(report, indent=2, default=str).encode()))
+    artifact_ids = await _store_artifacts(db, task_id, files)
+    res = await db.col("tasks").update_one(
+        {"_id": task_id, "status": "aggregating"},
+        {
+            "$set": {
+                "status": "completed",
+                "result": {
+                    "artifact_ids": artifact_ids,
+                    "metrics": {k: v for k, v in metrics.items() if k != "class_names"},
+                    "reference_check": ref,
+                    "training": training_summary,
+                },
+            },
+            "$push": {"status_history": {"status": "completed", "at": utcnow()}},
+        },
+    )
+    if res.modified_count:
+        await emit(
+            db,
+            "task_completed",
+            task_id=task_id,
+            data={"reference_passed": ref["passed"], "accuracy": metrics["accuracy"]},
+        )
+    return bool(res.modified_count)
+
+
 async def _aggregate(db: Db, task: dict[str, Any]) -> bool:
     task_id = task["_id"]
+    if task.get("task_type") == "cnn_image_train":
+        return await _aggregate_cnn(db, task)
     chunks = [c async for c in db.col("chunks").find({"task_id": task_id}).sort("index", 1)]
     if not chunks or any(c["status"] != "completed" for c in chunks):
         raise AggregationError("not all chunks are completed")

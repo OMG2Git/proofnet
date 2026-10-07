@@ -23,12 +23,15 @@ from ..events import emit
 from ..ids import new_id
 from ..scheduling.lifecycle import free_device, release_attempt
 from ..tasks.prepared import load_task_prepared
+from ..training import service as training
 from ..verification import DEFAULT_HOOK
 
 router = APIRouter(prefix="/worker/assignments", tags=["worker"])
 
 
-def worker_params(task: dict[str, Any]) -> dict[str, Any]:
+def worker_params(task: dict[str, Any], chunk: dict[str, Any] | None = None) -> dict[str, Any]:
+    if training.is_iterative(task) and chunk is not None:
+        return training.worker_params(task, chunk)
     if task["task_type"] == "gaussian_nb_train":
         return {"n_classes": len(task["prepared"]["class_labels"])}
     return {}
@@ -52,7 +55,7 @@ async def run_directive_for(db: Db, device: dict[str, Any]) -> RunDirective | No
             chunk_id=chunk["_id"],
             kernel=task["task_type"],
             kernel_version=task["kernel_version"],
-            params=worker_params(task),
+            params=worker_params(task, chunk),
             input_url=f"/worker/assignments/{asg['_id']}/input",
             input_sha256=chunk["input_sha256"],
             n_rows=chunk["n_rows"],
@@ -112,8 +115,13 @@ async def assignment_input(assignment_id: str, db: DbDep, device: DeviceDep) -> 
     chunk = await db.col("chunks").find_one({"_id": asg["chunk_id"]})
     task = await db.col("tasks").find_one({"_id": asg["task_id"]})
     assert chunk is not None and task is not None
-    prepared = await load_task_prepared(db, task)
-    data = await asyncio.to_thread(prepared.chunk_npz_bytes, chunk["row_start"], chunk["row_end"])
+    if training.is_iterative(task):
+        data = await training.build_chunk_input(db, task, chunk)
+    else:
+        prepared = await load_task_prepared(db, task)
+        data = await asyncio.to_thread(
+            prepared.chunk_npz_bytes, chunk["row_start"], chunk["row_end"]
+        )
     import hashlib
 
     digest = hashlib.sha256(data).hexdigest()
@@ -129,6 +137,8 @@ async def assignment_input(assignment_id: str, db: DbDep, device: DeviceDep) -> 
 def _validate_partial(
     kernel: Kernel, task: dict[str, Any], chunk: dict[str, Any], payload: dict[str, Any]
 ) -> list[str]:
+    if training.is_iterative(task):
+        return training.validate_partial(task, chunk, payload)
     n_features = task["prepared"]["n_features"]
     if task["task_type"] == "gaussian_nb_train":
         n_classes = len(task["prepared"]["class_labels"])
@@ -256,6 +266,11 @@ async def submit_result(
         assignment_id=assignment_id,
         data={"acceptance": acceptance, "compute_ms": body.timings.compute_ms},
     )
+    if training.is_iterative(task):
+        # a round just got one more accepted chunk: close the round if it is the last one
+        _spawn(request, training.advance_training(db, settings, task["_id"]))
+        _kick(request, settings)
+        return ResultAck(assignment_id=assignment_id, status="succeeded", acceptance=acceptance)
     remaining = await db.col("chunks").count_documents(
         {"task_id": task["_id"], "status": {"$ne": "completed"}}
     )

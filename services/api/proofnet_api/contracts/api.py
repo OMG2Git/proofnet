@@ -148,6 +148,7 @@ class TaskOut(BaseModel):
     error: str | None = None
     verification_policy: dict[str, Any]
     created_at: datetime
+    training: dict[str, Any] | None = None
 
 
 class NetworkDevice(BaseModel):
@@ -240,3 +241,33 @@ class ResultAck(BaseModel):
     assignment_id: str
     status: str
     acceptance: str | None = None
+
+
+class ImageDatasetOut(BaseModel):
+    id: str
+    filename: str
+    size_bytes: int
+    profile: dict[str, Any]
+    created_at: datetime
+
+
+class TrainingRound(BaseModel):
+    round: int
+    loss: float
+    accuracy: float
+    n: int
+    devices: list[dict[str, Any]]
+    verification: dict[str, Any] | None = None
+
+
+class TrainingStatus(BaseModel):
+    """Live training curve and per-round contributions (real values from the devices)."""
+
+    steps: int
+    round: int
+    state: str
+    global_batch_size: int
+    learning_rate: float
+    n_params: int
+    rounds: list[TrainingRound]
+    verified_rounds: list[int]

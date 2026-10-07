@@ -4,6 +4,7 @@ from .errors import ApiError, ErrorBody
 from .manifest import (
     ExecutionSettings,
     GaussianNBParams,
+    ImageTaskManifest,
     LinearRidgeParams,
     MissingValuePolicy,
     StartPolicy,
@@ -37,6 +38,7 @@ __all__ = [
     "FailRequest",
     "GaussianNBParams",
     "HeartbeatRequest",
+    "ImageTaskManifest",
     "HeartbeatResponse",
     "LinearRidgeParams",
     "MissingValuePolicy",

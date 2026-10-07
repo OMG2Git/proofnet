@@ -106,6 +106,10 @@ async def planning_devices(
 
 async def try_start_task(db: Db, settings: Settings, task: dict[str, Any]) -> bool:
     """queued -> running when the start policy is satisfied (>= min_devices eligible devices)."""
+    if task.get("task_type") == "cnn_image_train":
+        from ..training.service import start_training  # iterative workloads plan per round
+
+        return await start_training(db, settings, task)
     n_train, n_features = task["prepared"]["n_train"], task["prepared"]["n_features"]
     execution = task["execution"]
     devices = await planning_devices(db, settings, task)

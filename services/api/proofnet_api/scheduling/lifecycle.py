@@ -33,7 +33,7 @@ async def free_device(db: Db, device_id: str, assignment_id: str, stat: str | No
 async def _close_open_work(db: Db, task_id: str, code: str, message: str, now: datetime) -> None:
     """Cancel pending/assigned chunks and active assignments of a task that is ending."""
     await db.col("chunks").update_many(
-        {"task_id": task_id, "status": {"$in": ["pending", "assigned"]}},
+        {"task_id": task_id, "status": {"$in": ["created", "pending", "assigned"]}},
         {"$set": {"status": "cancelled"}},
     )
     async for a in db.col("assignments").find({"task_id": task_id, "status": {"$in": ACTIVE}}):
@@ -193,12 +193,13 @@ async def expire_tasks(db: Db, settings: Settings, now: datetime | None = None) 
             code="QUEUE_TIMEOUT",
         ):
             n += 1
-    r_cut = now - timedelta(seconds=settings.task_timeout_seconds)
-    async for t in db.col("tasks").find({"status": "running", "started_at": {"$lt": r_cut}}):
-        if await fail_task(
+    async for t in db.col("tasks").find({"status": "running", "started_at": {"$exists": True}}):
+        limit = int(t.get("timeout_seconds") or settings.task_timeout_seconds)
+        timed_out = t["started_at"] < now - timedelta(seconds=limit)
+        if timed_out and await fail_task(
             db,
             t["_id"],
-            f"task did not finish within {settings.task_timeout_seconds} s (task timeout)",
+            f"task did not finish within {limit} s (task timeout)",
             code="TASK_TIMEOUT",
         ):
             n += 1

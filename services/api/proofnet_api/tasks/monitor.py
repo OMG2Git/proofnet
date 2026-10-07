@@ -22,6 +22,7 @@ from ..scheduling.preview import device_reasons
 from .routes import task_out
 
 router = APIRouter(tags=["tasks"])
+RECENT_ASSIGNMENTS = 40
 
 
 async def _owned_task(db: Db, task_id: str, user_id: str) -> dict[str, Any]:
@@ -78,10 +79,24 @@ async def task_status(
 
 async def _build_status(db: Db, settings: Settings, task_id: str, user_id: str) -> TaskStatus:
     t = await _owned_task(db, task_id, user_id)
-    chunks = [c async for c in db.col("chunks").find({"task_id": task_id}).sort("index", 1)]
-    asgs = [
-        a async for a in db.col("assignments").find({"task_id": task_id}).sort("assigned_at", 1)
-    ]
+    training = t.get("training")
+    if training:  # iterative task: hundreds of rounds, so only the live round and recent attempts
+        shown = min(training["round"], training["steps"] - 1)  # after the last round, show it
+        chunk_q: dict[str, Any] = {"task_id": task_id, "round": shown}
+        chunks = [c async for c in db.col("chunks").find(chunk_q).sort("index", 1)]
+        recent = [
+            a
+            async for a in db.col("assignments")
+            .find({"task_id": task_id})
+            .sort("assigned_at", -1)
+            .limit(RECENT_ASSIGNMENTS)
+        ]
+        asgs = list(reversed(recent))
+    else:
+        chunks = [c async for c in db.col("chunks").find({"task_id": task_id}).sort("index", 1)]
+        asgs = [
+            a async for a in db.col("assignments").find({"task_id": task_id}).sort("assigned_at", 1)
+        ]
     device_ids = list({a["device_id"] for a in asgs})
     names = {
         d["_id"]: d["name"] async for d in db.col("devices").find({"_id": {"$in": device_ids}})

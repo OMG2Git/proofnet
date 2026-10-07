@@ -16,6 +16,7 @@ from .datasets.routes import router as datasets_router
 from .db import Db, connect
 from .devices.routes import router as devices_router
 from .errors import install_error_handlers
+from .image_tasks.routes import router as image_router
 from .network.routes import router as network_router
 from .tasks.monitor import router as monitor_router
 from .tasks.routes import router as tasks_router
@@ -77,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         network_router,
         assignments_router,
         monitor_router,
+        image_router,
     ):
         api.include_router(r)
 

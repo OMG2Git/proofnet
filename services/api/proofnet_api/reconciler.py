@@ -14,6 +14,7 @@ from .db import Db, utcnow
 from .events import emit
 from .scheduling.lifecycle import expire_assignments, expire_tasks
 from .scheduling.scheduler import schedule_pass
+from .training.service import resume_training
 
 log = logging.getLogger("proofnet.reconciler")
 
@@ -50,6 +51,7 @@ async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> N
     await expire_tasks(db, settings, now)  # queue and task timeouts
     await schedule_pass(db, settings)
     await resume_aggregations(db)
+    await resume_training(db, settings)
 
 
 async def run_forever(db: Db, settings: Settings) -> None:

@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from proofnet_kernels.server.cnn import CnnParams
 from proofnet_kernels.server.params import (
     CommonParams,
     GaussianNBParams,
@@ -38,6 +39,17 @@ class ExecutionSettings(_Strict):
         if self.min_devices > self.max_devices:
             raise ValueError("min_devices must be <= max_devices")
         return self
+
+
+class ImageTaskManifest(_Strict):
+    """Image CNN training (separate pipeline from the CSV workloads; ARCHITECTURE 4.5)."""
+
+    name: str = Field(min_length=1, max_length=120)
+    task_type: Literal["cnn_image_train"] = "cnn_image_train"
+    kernel_version: Literal["1"] = "1"
+    dataset_id: str = Field(pattern=r"^img_")
+    params: CnnParams = CnnParams()
+    execution: ExecutionSettings = ExecutionSettings()
 
 
 class TaskManifest(_Strict):
