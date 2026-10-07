@@ -275,6 +275,8 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Gate.** M2 acceptance on two real phones.
 
+**Status: IMPLEMENTED; real-phone gate pending.** Done: `WeightedProportionalPlanner` (deterministic order, proportional rows with largest-fractional-part remainders, `MIN_CHUNK_ROWS`, memory-cap splitting) behind `ChunkPlanner`; `min_devices`/`max_devices`/`wait_for_min_devices` (queued tasks explain what they wait for); plan preview in `/tasks/validate` and the wizard; preferred device with `PREFERRED_WAIT` fallback and one active assignment per device (invariant tested); aggregation over N partials in chunk-index order with coverage check; dashboard with plan vs actual, device lanes, human-readable event feed and chunk placement on `/network`; 1 s status/network snapshot cache. Tests: planner unit/property tests (incl. random plans always tile [0,N)), Levels 5–6 with 2/3/4 CLI workers and fixed unequal scores, 8 workers × 10 consecutive tasks, and two real browser workers (headless Chromium). Doc correction: the ARCHITECTURE 6.2 worked example is 53,333 / 26,667 (the earlier 53,334 / 26,666 contradicted the largest-fractional-part rule). Outstanding: two real phones.
+
 ---
 
 ## 9. P6 — MVP reliability & failure handling
