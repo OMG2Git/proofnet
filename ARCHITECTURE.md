@@ -370,7 +370,7 @@ estimated_seconds = rows · d / score_i                          # shown in plan
 
 - `benchmark_score` is measured in **cells/second** (rows × features processed by the real kernel code, §7.4), so it directly predicts chunk time.
 - `mem_estimate = rows × (d + 1) × 8 bytes × 3` (input + working copies). Browser workers: `mem_budget = min(256 MB, 10 % of reported device memory)`; CLI workers: configured.
-- Example: Phone A score 3.0 M cells/s, Phone B 1.5 M cells/s, N = 80,000 → A gets 53,334 rows, B gets 26,666 rows. Phone C offline → not considered. Phone D busy → not eligible; a `wait_for_min_devices` task stays queued until it frees up.
+- Example: Phone A score 3.0 M cells/s, Phone B 1.5 M cells/s, N = 80,000 → exact shares 53,333.33 and 26,666.67; floors 53,333 and 26,666 leave 1 row, which goes to the larger fractional part (B, .67) → A gets 53,333 rows, B gets 26,667 rows. (Corrected in P5: an earlier draft said 53,334 / 26,666, which contradicted the algorithm.) Phone C offline → not considered. Phone D busy → not eligible; a `wait_for_min_devices` task stays queued until it frees up.
 
 The plan (device shares, predicted times) is stored on the task and shown to the evaluator — explainability is part of the demo.
 
@@ -540,14 +540,14 @@ sequenceDiagram
     participant AGG as Aggregator
 
     Note over API: task queued, 2 eligible devices
-    API->>DB: plan: chunk 0 rows [0,53334) → A, chunk 1 rows [53334,80000) → B
+    API->>DB: plan: chunk 0 rows [0,53333) → A, chunk 1 rows [53333,80000) → B
     API->>DB: assignments asg_A, asg_B (assigned, leases)
     A->>API: heartbeat
     API-->>A: run asg_A
     B->>API: heartbeat
     API-->>B: run asg_B
-    A->>API: start, GET input (53,334 rows)
-    B->>API: start, GET input (26,666 rows)
+    A->>API: start, GET input (53,333 rows)
+    B->>API: start, GET input (26,667 rows)
     par compute
         A->>A: map(X0, y0) in Pyodide
     and
