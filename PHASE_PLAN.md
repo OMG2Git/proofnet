@@ -16,7 +16,8 @@ flowchart LR
     P3 --> P4["P4 ★ M1<br/>One device<br/>end-to-end"]
     P4 --> P5["P5 ★ M2<br/>Two+ devices<br/>device-aware"]
     P5 --> P6["P6<br/>Reliability<br/>& failures"]
-    P6 --> P7["P7 ★ M3<br/>Demo-ready<br/>MVP freeze"]
+    P6 --> P6B["P6b<br/>Image CNN<br/>(iterative)"]
+    P6B --> P7["P7 ★ M3<br/>Demo-ready<br/>MVP freeze"]
     P7 --> P8["P8<br/>Verification<br/>foundation"]
     P8 --> P9["P9<br/>Attack<br/>simulation"]
     P9 --> P10["P10<br/>Trust &<br/>PWAV"]
@@ -34,6 +35,7 @@ flowchart LR
 | **P4** | **★ M1 — one device end-to-end** | **Must work now** | M | Levels 3–4 |
 | **P5** | **★ M2 — multi-device, device-aware** | **Must work now** | M | Levels 5–6 |
 | P6 | MVP reliability & failure handling | Must work now | M | Level 7 |
+| **P6b** | **Image CNN workload (iterative, data-parallel)** | Must work now (added 2026-10-08) | M | Levels 3–6 for images |
 | **P7** | **★ M3 — demo hardening & MVP freeze** | **Must work now** | S–M | Level 8 |
 | P8 | Verification foundation | Research / Part 2 | M | — |
 | P9 | Attack simulation | Research / Part 2 | M | — |
@@ -319,6 +321,36 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 **Status: IMPLEMENTED; phone scenarios pending.** Done: reconciler expiry of deadlines and offline devices (assignment `expired` → chunk `pending` with `excluded_device_ids`, max 3 attempts, task failed with a reason when exhausted), queue and task timeouts, cancel (`POST /tasks/{id}/cancel`, assignments cancelled, `cancel` directive, browser worker terminates and restarts its Web Worker), session-restart handling, resume of stuck aggregation (stale claims released), CLI fault injection (`--fail-rate`, `--delay-ms`, `--die-after-start`, `--corrupt-result`, `--late-result-ms`), failure messages in the event feed and a Cancel button. Automated scenarios: worker dies mid-chunk, corrupt payload, always-failing worker (3 attempts → task failed, no partial aggregation), late result (409, event logged, never merged), duplicate result, user cancel (and cancel of a queued task), backend restart mid-task, stuck aggregation, no devices → queue timeout, task timeout (slow worker told to stop), deadline expiry, session restart mid-chunk, unstarted assignment re-dispatch. Design changes recorded in ARCHITECTURE §11 (deadline transfer allowance, exclusion relaxation, derived cancel directive). Outstanding: phone scenarios and CI green.
 
 ---
+
+## 9b. P6b — Image CNN workload (iterative, data-parallel) — added 2026-10-08
+
+**Why.** The CSV kernels are single-pass and cheap; an evaluator also wants to see a *real* AI training job (a CNN on images) running across phones. This is a deliberate scope extension (previously "deep learning" was out of scope); it is implemented as a **separate pipeline** and does not change the CSV workloads. CLAUDE.md §9 and ARCHITECTURE §4.5 are updated accordingly.
+
+**Objective.** Train a small CNN on an image dataset (Fashion-MNIST, the dataset hosted on Kaggle as `zalando-research/fashionmnist`) across contributor devices, with correctness equal to centralized training, without ever placing the dataset on a phone.
+
+**Dependencies.** P6 (failure handling is reused for every round).
+
+**Work.**
+1. `core/cnn.py`: NumPy CNN, forward/backward, `map` (gradient *sum* over a batch slice) and `merge`; finite-difference gradient tests; additivity tests; Pyodide parity.
+2. `server/images.py`: image dataset ingestion (zip of class folders, Kaggle pixel CSV) with hostile-input limits; `server/cnn.py`: params, split, deterministic batching, SGD+momentum, evaluation, centralized gradient reference, artifacts (`model.npz`, `model.json`, `inference.py`).
+3. Round engine (`training/`): per-round chunks split by benchmark, round closing with conditional transitions, model states, sampled centralized verification, reconciler resume, per-task timeout.
+4. API: `/image-datasets`, `/image-tasks[/validate]`, `/tasks/{id}/training`; bounded status payload for long runs.
+5. Workers: CLI worker and browser worker (Pyodide) run the CNN `map`; short "hot polling" after each assignment so rounds follow each other quickly.
+6. UI: `/images/new` (upload, thumbnails, hyperparameters, plan preview) and a training monitor (progress, loss/accuracy curves with verified rounds, device contributions, per-class accuracy, confusion matrix, downloads).
+7. `datasets/make_image_zip.py` (Fashion-MNIST → class-folder zip; also accepts the Kaggle CSV).
+
+**Testing.** Gradient correctness (finite differences), additivity over random partitions, full distributed-vs-centralized training replay, Pyodide parity (observed 7.6e-7), ingestion incl. hostile zips, API tests with CLI workers (2 devices with 3:1 scores → 24/8 images every round; one device dying mid-training; corrupt gradient rejected; scaled gradient caught by the centralized check; cancel; reconciler resumes a stuck round), headless-Chromium E2E with two Pyodide workers.
+
+**Acceptance.**
+- Two real phones train the CNN on a Fashion-MNIST subset on the deployed stack; the gradient check passes on the sampled rounds; holdout accuracy is reported; the model downloads and runs (`inference.py`).
+- Rows per round are split by measured benchmark and shown; failures during training are survived or reported.
+- CSV workloads unchanged (full test suite green).
+
+**Risks.** Per-round latency on phones (transfer + round trips); modest accuracy of a small NumPy CNN. *Mitigation:* tiny per-round payloads (~190 KB), hot polling, honest numbers in the UI/report.
+
+**Gate.** Real-phone training run passes (see status).
+
+**Status: IMPLEMENTED; real-phone gate pending.** Verified: 16 kernel tests (finite-difference gradients, additivity, ingestion, distributed-vs-centralized full replay), Pyodide parity (7.6e-7), 9 API training tests with CLI workers, and a headless-Chromium run with two Pyodide workers on a 3,000-image Fashion-MNIST subset (40 rounds × batch 64 in 84 s, 43/21 images per round by measured benchmark, gradient check PASSED on rounds 0/20/39, holdout accuracy 68.9% after 0.9 epochs). Outstanding: the same on two real phones, deployed.
 
 ## 10. P7 — ★ M3: Demo hardening & MVP freeze
 

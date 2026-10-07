@@ -48,6 +48,7 @@ The MVP is deliberately narrow so that it is **real**:
 | D7 | **Scheduler = weighted proportional partitioning by measured benchmark score**, with eligibility filters and memory caps. | Simple, explainable, deterministic, device-aware, easy to replace. |
 | D8 | **Single backend instance with an idempotent reconciler loop**, all state transitions as conditional atomic MongoDB updates. | No queue service needed; survives restarts because state is in the DB. |
 | D9 | **Workers return JSON only; the backend never unpickles anything received from a worker or user.** `.joblib` artifacts are produced only by the backend from validated numbers. | Pickle is code execution. |
+| D11 | **Image CNN = stateless synchronous data-parallel rounds** (added P6b). The dataset stays on the backend; each assignment carries one slice of a mini-batch + the current weights; devices return gradient *sums*; the backend adds, divides, applies SGD. Mathematically identical to centralized SGD on the same batch, and re-checked on sampled rounds. | Phones cannot hold or download a dataset; a stateless round also makes every existing failure rule (retry, exclusion, expiry, cancel) apply unchanged. |
 | D10 | **Contract-first:** FastAPI's OpenAPI schema is the single source of API types; the TypeScript client types are generated from it. | Keeps frontend, worker and backend in sync for a student team. |
 
 What the MVP explicitly does **not** do: arbitrary ML frameworks, user Python code, deep learning, blockchain/tokens, consensus, Kubernetes, microservices, trust scores, PWAV. See `CLAUDE.md` § Scope.
@@ -143,6 +144,8 @@ proofnet/
 │       ├── artifacts/           storage + download
 │       ├── events/              append-only event log + status snapshots
 │       ├── verification/        hook interfaces (MVP: pass-through)   ← Part 2 grows here
+│       ├── training/            iterative (round-based) tasks: rounds, model states — P6b
+│       ├── image_tasks/         image dataset upload, CNN task validate/create, training curve — P6b
 │       └── reconciler.py        periodic idempotent maintenance loop
 ├── packages/kernels/            proofnet_kernels — SHARED Python package
 │   └── proofnet_kernels/
@@ -152,7 +155,8 @@ proofnet/
 │       │   ├── moments.py       Chan/parallel moment merge utilities
 │       │   ├── bench.py         benchmark workload
 │       │   └── serialize.py     canonical JSON, digests, array encoding
-│       └── server/              backend-only (scikit-learn, pandas): finalize, reference, compare
+│       └── server/              backend-only (scikit-learn, pandas, Pillow): finalize, reference, compare
+│           ├── cnn.py · images.py   CNN params/optimizer/evaluation; image dataset ingestion (zip/CSV) — P6b
 ├── workers/cli-worker/          CPython reference worker (laptops, CI, fault injection)
 ├── datasets/                    deterministic demo-dataset generator + tiny fixtures
 └── scripts/                     dev helpers: seed users, reset demo, run N simulated workers
@@ -286,6 +290,36 @@ A submitted task is a validated JSON manifest — this is ProofNet's determinist
 The task type determines: what inputs are required, what the computation is, how it partitions (row ranges), and how partials merge. No guesswork, no LLM parsing.
 
 ---
+
+### 4.5 Iterative workload: image CNN (`cnn_image_train@1`, added in P6b)
+
+Everything above is single-pass map → merge. Training a neural network is **iterative**: many steps, each depending on the previous result. ProofNet supports exactly one such workload, designed so the existing chunk/assignment/failure machinery is reused unchanged.
+
+**Model.** A small CNN written in NumPy by ProofNet (`core/cnn.py`, runs unchanged on CPython and Pyodide): `conv3×3 → ReLU → maxpool2 → conv3×3 → ReLU → maxpool2 → dense → ReLU → dense(softmax)`, float32, channels-last uint8 inputs scaled by 1/255. Filters/units are catalog parameters with bounds (not code). For 28×28×1 inputs with 8/16/64 it has 27,562 parameters (~110 KB).
+
+**Why not PyTorch/TensorFlow.** Neither runs in Pyodide, and the security rule (D5) is that only ProofNet-authored code executes on devices. A hand-written NumPy CNN is slower but fully controlled, testable (finite-difference gradient checks) and identical on backend and phone.
+
+**Data never lives on the phone.** The prepared dataset stays in GridFS on the backend (uint8 arrays; an input of a 10k-image Fashion-MNIST subset is 7.9 MB in total). A device receives per assignment only `{X: uint8 slice of one mini-batch, y, w: float32 weights}` (~190 KB for 94 images) and keeps nothing afterwards.
+
+**One round (= one SGD step).**
+```
+round r (model version r):
+  batch   = indices of the global mini-batch r              (deterministic: per-epoch seeded permutation)
+  plan    = split B rows across eligible devices ∝ benchmark (same allocate-rows rule as 6.2; tiny shares dropped)
+  chunks  = one per device (role work, round r, row range inside the batch); assigned like any chunk
+  device  : loss_sum, #correct, grad_sum = Σ over its images of ∂loss/∂w          (core/cnn.py map)
+  backend : once every chunk of round r is accepted:
+              grad_sum_total = Σ device grad_sums (float64);  g = grad_sum_total / B
+              v ← μ·v − η·g ;  w ← w + v           (SGD with momentum) → model version r+1
+              on sampled rounds: recompute the gradient of the whole batch centrally and compare
+              create the chunks of round r+1 from the devices eligible *now*
+after the last round: evaluate on the aggregator-held holdout, write artifacts
+```
+**Correctness.** The loss is a sum over samples, so the gradient of the global batch equals the sum of the gradients of any partition of it. The distributed update therefore equals centralized SGD on the same batch up to float32 summation order. This is *checked*, not assumed: on `verify_rounds` sampled rounds (always including round 0) the backend recomputes the whole batch's gradient and compares it normwise (tolerance 1e-4; observed ≈ 1e-6), and the test suite replays a whole training run distributed-vs-centralized (final weights agree to < 1e-3). A device that returns a well-formed but scaled gradient fails the check and the report says `FAILED`.
+
+**State and recovery.** The model lives in `model_states` (`<task>:v<n>`: float32 weights + momentum), only the newest two versions are kept. Round closing is a conditional transition `collecting → closing → collecting(r+1) | done` guarded by `training.round`; model states and next-round chunks are deterministic (`unique(task, round, index)`), so a crashed attempt is simply re-run by the reconciler (`resume_training`). Per-round metrics go to `training_rounds` (loss/accuracy from the devices' own batch sums, per-device rows and timings). Failures inside a round use the normal rules: a dead/slow/corrupt device's chunk is retried elsewhere (max 3 attempts); an exhausted chunk fails the task.
+
+**Honest limitations.** Per round the work is small; transfer and round-trip latency dominate on phones (≈ 2 s/round on a fast link with Pyodide). Accuracy is modest (a 27k-parameter CNN reaches ≈ 80% on Fashion-MNIST after a few epochs). Contributors see the images of the mini-batches they compute on. Only sampled rounds are checked against a centralized gradient; others are `accepted_unverified` (Part 2 generalizes this).
 
 ## 5. Task submission, validation and preparation
 
@@ -734,10 +768,13 @@ erDiagram
 | `devices` | `owner_user_id`, `name`, `device_type`, `capabilities{…}` (§7.3, embedded = "DeviceCapability"), `runtime{kind, versions, bundle}`, `benchmark{score_cells_per_sec, bench_version, measured_at}`, `status`, `session_id`, `last_seen_at`, `current_assignment_id`, `token_hash`, `stats{succeeded, failed, expired, invalid_results, cells_processed}` | `stats` is the raw material for future trust |
 | `datasets` | `owner_user_id`, `filename`, `size_bytes`, `sha256`, `raw_file_id` (GridFS), `profile{n_rows, columns[{name, dtype, missing, unique, min, max}]}` | "TaskInput" = dataset + task.prepared |
 | `tasks` | `owner_user_id`, `name`, `task_type`, `kernel_version`, `dataset_id`, `params`, `execution{min_devices, max_devices, start_policy}`, `validation{…}`, `prepared{file_id, sha256, n_train, n_test, n_features, class_labels[], feature_names[]}`, `plan{created_at, shares[{device_id, rows, est_seconds}]}`, `status`, `status_history[]`, `result{artifact_ids[], metrics, reference_check}`, `error`, `verification_policy{mode: "none"}` | `verification_policy` exists from day one; Part 2 adds modes |
-| `chunks` | `task_id`, `index`, `role` (`work`; future `challenge`), `row_start`, `row_end`, `n_rows`, `work_units`, `input_sha256`, `preferred_device_id`, `status`, `attempt_count`, `max_attempts`, `excluded_device_ids[]`, `accepted_assignment_id` | Row ranges must tile `[0, n_train)` |
+| `chunks` | `task_id`, `round?` (image CNN: one chunk set per round; `unique(task, round, index)`), `index`, `role` (`work`; future `challenge`), `row_start`, `row_end`, `n_rows`, `work_units`, `input_sha256`, `preferred_device_id`, `status`, `attempt_count`, `max_attempts`, `excluded_device_ids[]`, `accepted_assignment_id` | Row ranges must tile `[0, n_train)` |
 | `assignments` | `task_id`, `chunk_id`, `device_id`, `attempt_no`, `purpose` (`primary`; future `replica`, `audit`), `status`, `assigned_at`, `started_at`, `finished_at`, `deadline_at`, `timings{download_ms, compute_ms, upload_ms, total_ms}`, `runtime_fingerprint`, `error{code, message}`, `partial_result_id` | = "Assignment + Execution" |
 | `partial_results` | `assignment_id`, `chunk_id`, `task_id`, `device_id`, `kernel`, `kernel_version`, `payload`, `payload_sha256`, `structural{ok, errors[]}`, `acceptance` (`accepted_unverified`, `rejected_structural`; future `verified`, `disputed`, `rejected_verification`), `received_at` | Never deleted during a task — Part 2 needs them |
 | `artifacts` | `task_id`, `kind`, `filename`, `file_id`, `size_bytes`, `sha256`, `created_at` | "FinalResult" = task.result + artifacts |
+| `image_datasets` | `owner_user_id`, `filename`, `size_bytes`, `sha256`, `npz_file_id` (GridFS uint8 arrays), `profile{n_images, shape, classes, class_counts, samples[]}` | P6b; zips are never stored, only the decoded arrays |
+| `model_states` | `task_id`, `version`, `weights_b64` (float32), `velocity_b64` | P6b; newest two versions per task |
+| `training_rounds` | `task_id`, `round`, `loss`, `accuracy`, `n`, `devices[{device_id, name, rows, compute_ms, download_ms}]`, `verification?` | P6b; the live training curve |
 | `events` | `ts`, `type`, `task_id?`, `device_id?`, `chunk_id?`, `assignment_id?`, `data{}` | Append-only audit/timeline; feeds dashboards |
 
 Indexes (minimum): `devices(status, last_seen_at)`, `chunks(task_id, status)`, `assignments(device_id, status)`, `assignments(chunk_id)`, `events(task_id, ts)`, `tasks(owner_user_id, created_at)`.
@@ -766,6 +803,9 @@ Auth: users use `Authorization: Bearer <JWT>`; workers use `Authorization: Beare
 | `GET /tasks/{id}/artifacts`, `GET /artifacts/{id}/download` | owner | Results |
 | `POST /devices` | user | Register a device → `device_id`, `device_token` |
 | `GET /devices/mine`, `PATCH /devices/{id}` | owner | List, rename, disable/enable |
+| `POST /image-datasets`, `GET /image-datasets[/{id}]` | user | Upload a zip of class folders or a pixel CSV (≤ 25 MB) → decoded, profiled (class counts + sample thumbnails). Separate from `/datasets` |
+| `POST /image-tasks/validate`, `POST /image-tasks` | user | CNN task: validate + per-round batch-split preview / create (prepare split → `queued`) |
+| `GET /tasks/{id}/training` | owner | Training curve: per-round loss/accuracy, per-device rows and timings, centrally verified rounds |
 | `GET /network/summary` | user (or demo-public) | Online/idle/busy counts, device list (names, scores, states), active chunks |
 | `GET /runtime/manifest` | device | Pyodide version, kernel bundle version + SHA-256, intervals |
 | `GET /runtime/kernels/{version}` | device | Kernel bundle zip (`proofnet_kernels/core`) |
@@ -782,6 +822,8 @@ Error format: `{ "error": { "code": "VALIDATION_FAILED", "message": "…", "deta
 ---
 
 ## 14. Security boundary (honest statement)
+
+*Image uploads (P6b)* are decoded in memory only: never extracted to disk, only png/jpg members, member/total/pixel/count caps checked before decoding (decompression-bomb guard), class names from the folder name only, no member path is ever used for I/O. Weights and gradients travel as base64 float32 inside JSON/`.npz` with `allow_pickle=False`; gradient payloads are validated for size, finiteness and counts like any partial result.
 
 **What the MVP protects:**
 
@@ -943,3 +985,4 @@ Important property of the chosen workloads: the backend can **recompute any sing
 | D8 | Single instance + reconciler | Celery/Redis/queues | Multi-instance needed |
 | D9 | JSON results, no pickle intake | Pickled partials | Never |
 | D10 | OpenAPI-generated TS types | Hand-written types | — |
+| D11 | Stateless synchronous data-parallel rounds for the image CNN (gradient sums; datasets stay on the backend) | Shipping shards to phones; federated averaging of local weights (not equal to centralized); PyTorch/TF in the browser | Larger models need cached shards or hierarchical aggregation |

@@ -41,7 +41,7 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
 6. Part 2 only after M3 (offline research may run in parallel).
 
-Current phase: **P6** — P0–P5 completed (M1 and M2 passed 2026-10-07). P6 implemented and verified automatically (15 Level-7 scenarios against real MongoDB with CLI fault injection, stable over repeated runs; cancel verified in headless Chromium). **Remaining for the P6 gate: the scenario suite green in CI, the phone scenarios (screen locked mid-chunk → reassigned; Ridge on two phones with reference check passing) on the deployed stack.** Update this line as phases complete.
+Current phase: **P6 / P6b** — P0–P5 completed (M1, M2 passed 2026-10-07). P6 (reliability) implemented and verified automatically; its phone scenarios are pending. **P6b (image CNN workload, added 2026-10-08) implemented and verified automatically and in headless Chromium with two Pyodide workers (Fashion-MNIST subset: 40 rounds in 84 s, batch split 67.2%/32.8% by measured benchmark, centralized gradient check PASSED at 1.35e-6); real-phone gate pending.** Update this line as phases complete.
 
 ---
 
@@ -54,7 +54,7 @@ Current phase: **P6** — P0–P5 completed (M1 and M2 passed 2026-10-07). P6 im
 | Database | **MongoDB Atlas free tier** — metadata in collections, files in **GridFS**. Only persistent store. |
 | Compute plane | Contributor devices. **Android = Chrome browser + Pyodide (Python/WASM) + NumPy in a Web Worker.** Laptops/CI = CPython CLI worker using the same kernel code. |
 | Communication | **HTTPS pull/polling.** `POST /worker/heartbeat` (2 s idle / 5 s busy) returns directives (`run`, `cancel`). No inbound connections to devices. Offline after 20 s without heartbeat. |
-| Workloads | Controlled **task catalog** of ProofNet-authored **kernels**: `gaussian_nb_train@1`, `linear_ridge_train@1` (exact sufficient-statistics merge). |
+| Workloads | Controlled **task catalog** of ProofNet-authored **kernels**: `gaussian_nb_train@1`, `linear_ridge_train@1` (exact sufficient-statistics merge). Plus one iterative, data-parallel workload for images: **`cnn_image_train@1`** (ProofNet-authored NumPy CNN; synchronous SGD over gradient sums; separate pipeline, ARCHITECTURE 4.5) |
 | Scheduling | Eligibility filter + **weighted proportional rows by measured benchmark (cells/s)**, memory caps, deterministic ordering. |
 | API types | FastAPI OpenAPI → generated TypeScript types. |
 
@@ -74,7 +74,9 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 - **Assignment** — one attempt to run a chunk on one device (= "execution"). States: `assigned, running, succeeded, rejected, failed, expired, cancelled`. Has `purpose` (`primary` now; `replica`/`audit` in Part 2).
 - **Partial result** — JSON statistics returned by a device for one assignment. `acceptance = accepted_unverified` in the MVP.
 - **Aggregation** — `merge → finalize → metrics → reference check → artifacts`.
-- **Artifact** — `model.joblib`, `model.json`, `report.json`, `predictions.csv`.
+- **Round** *(image CNN only)* — one training step: the global mini-batch is split across devices by measured benchmark; each device returns the **sum** of its per-sample gradients; the backend adds them, divides by the batch size and applies SGD. A task has `steps` rounds; round *r* uses model version *r*. Devices never hold the dataset: they receive only their slice of one mini-batch (+ the current weights, ~110 KB) per assignment.
+- **Image dataset** — a zip of class folders (png/jpg) or a Kaggle MNIST-style pixel CSV, decoded server-side into a uint8 array (`image_datasets`, GridFS); separate from CSV datasets.
+- **Artifact** — `model.joblib`, `model.json`, `report.json`, `predictions.csv` (CSV workloads); for image CNNs `model.npz`, `model.json`, `inference.py`, `training_curve.csv`, `predictions.csv`, `report.json`.
 - **Device** states: `initializing, idle, busy, offline, disabled`.
 - **Kernel** — `validate, prepare, map (worker), validate_partial, merge, finalize, reference, compare`.
 
@@ -85,7 +87,8 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 **Rules that must not be broken:**
 
 1. **No user-supplied code is executed anywhere** in the MVP. Users choose a task type; only ProofNet kernels run.
-2. Worker-executed code lives only in `packages/kernels/proofnet_kernels/core` and imports only NumPy + stdlib.
+2. Image uploads are hostile input: decoded in memory only (never extracted to disk), only png/jpg members, size/pixel/count caps before decoding, class = folder name only.
+2b. Worker-executed code lives only in `packages/kernels/proofnet_kernels/core` and imports only NumPy + stdlib.
 3. **Never unpickle data from users or workers.** Chunk inputs are `.npz` loaded with `allow_pickle=False`; results are JSON; `.joblib` is only produced by the backend.
 4. Workers can only access their own assignments (device token, hashed in DB).
 5. Never execute the distributed workload in Vercel or in the backend (the backend only merges, finalizes and runs the small reference check).
@@ -121,7 +124,9 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 
 **In scope (MVP):** accounts; device registration, capabilities, benchmark, heartbeat; dataset upload, validation, preparation; two kernels; plan preview; device-aware scheduler; dispatch, execution, result intake; aggregation with reference check; artifacts and download; MVP failure handling (offline, timeout, invalid result, duplicates, cancel, retries); live dashboards; free deployment + fallback.
 
-**Explicitly out of scope:** user Python code; arbitrary ML frameworks or deep learning; blockchain, tokens, cryptocurrency; consensus protocols; trust scores, reputation, PWAV, rewards (Part 2); Kubernetes, Docker Compose stacks, microservices, message queues; LLM-based task parsing; GPU workers; production-grade security; categorical feature encoding.
+**Also in scope (added in P6b, 2026-10-08):** one deep-learning workload, `cnn_image_train@1` — a small ProofNet-authored NumPy CNN trained by synchronous data-parallel SGD over image mini-batches, with its own upload/validate/monitor flow. The CSV workloads are unchanged.
+
+**Explicitly out of scope:** user Python code; arbitrary ML frameworks, or deep learning beyond the single catalog CNN kernel (no PyTorch/TensorFlow, no custom architectures from users); blockchain, tokens, cryptocurrency; consensus protocols; trust scores, reputation, PWAV, rewards (Part 2); Kubernetes, Docker Compose stacks, microservices, message queues; LLM-based task parsing; GPU workers; production-grade security; categorical feature encoding.
 
 ---
 
