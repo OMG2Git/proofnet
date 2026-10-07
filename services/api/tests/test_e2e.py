@@ -5,132 +5,33 @@ Uses an isolated database per module so devices from other tests cannot take the
 
 import hashlib
 import io
-import secrets
 import time
-from collections.abc import Callable, Iterator
-from typing import Any, cast
+from typing import Any
 
-import httpx
 import joblib
 import numpy as np
 import pandas as pd
-import pytest
 from api_helpers import signup
+from e2e_helpers import (
+    V1,
+    Env,
+    clf_csv,
+    drive,
+    isolate,
+    make_worker,
+    manifest,
+    reg_csv,
+    status,
+    upload,
+)
 from fastapi.testclient import TestClient
-from pymongo import MongoClient
 from sklearn.linear_model import Ridge
 from sklearn.naive_bayes import GaussianNB
 
-from cli_worker.worker import Worker, login_or_signup
-from proofnet_api.config import Settings
-from proofnet_api.main import create_app
-
-V1 = "/api/v1"
-Mongo = MongoClient[dict[str, Any]]
+from cli_worker.worker import Worker
 
 
-class _Prefixed:
-    def __init__(self, c: TestClient) -> None:
-        self._c = c
-
-    def get(self, url: str, **kw: Any) -> httpx.Response:
-        return cast(httpx.Response, self._c.get(V1 + url, **kw))
-
-    def post(self, url: str, **kw: Any) -> httpx.Response:
-        return cast(httpx.Response, self._c.post(V1 + url, **kw))
-
-
-@pytest.fixture(scope="module")
-def env() -> Iterator[tuple[TestClient, Mongo, Settings]]:
-    base = Settings()
-    s = Settings(
-        mongodb_uri=base.mongodb_uri,
-        mongodb_db=f"proofnet_test_e2e_{secrets.token_hex(4)}",
-        jwt_secret="test-secret-test-secret-test-secret-123",
-        reconciler_interval_seconds=1,
-    )
-    mongo: Mongo = MongoClient(s.mongodb_uri, tz_aware=True)
-    try:
-        with TestClient(create_app(s)) as c:
-            yield c, mongo, s
-    finally:
-        mongo.drop_database(s.mongodb_db)
-        mongo.close()
-
-
-def clf_csv(n: int = 3000, d: int = 4, classes: int = 3, seed: int = 0) -> bytes:
-    rng = np.random.default_rng(seed)
-    y = rng.integers(0, classes, size=n)
-    x = rng.normal(size=(n, d)) + y[:, None] * 0.8
-    df = pd.DataFrame(x, columns=[f"f{i}" for i in range(d)])
-    df["label"] = y
-    return bytes(df.to_csv(index=False).encode())
-
-
-def reg_csv(n: int = 3000, d: int = 4, seed: int = 1) -> bytes:
-    rng = np.random.default_rng(seed)
-    x = rng.normal(size=(n, d))
-    y = x @ rng.normal(size=d) + 1.5 + rng.normal(scale=0.2, size=n)
-    df = pd.DataFrame(x, columns=[f"f{i}" for i in range(d)])
-    df["target"] = y
-    return bytes(df.to_csv(index=False).encode())
-
-
-def make_worker(client: TestClient, email: str, name: str) -> Worker:
-    http = cast(httpx.Client, _Prefixed(client))
-    token = login_or_signup(http, email, "password123")
-    w = Worker(http, token, name)
-    w.register()
-    w.start_session(w.load_runtime())
-    return w
-
-
-def isolate(env: tuple[TestClient, Mongo, Settings], w: Worker) -> None:
-    """Leftover devices from earlier scenarios must not take this scenario's work."""
-    _, mongo, s = env
-    mongo[s.mongodb_db]["devices"].update_many(
-        {"_id": {"$ne": w.device_id}}, {"$set": {"status": "disabled"}}
-    )
-
-
-def upload(client: TestClient, h: dict[str, str], data: bytes) -> str:
-    r = client.post(f"{V1}/datasets", headers=h, files={"file": ("d.csv", data, "text/csv")})
-    assert r.status_code == 201, r.text
-    return str(r.json()["id"])
-
-
-def manifest(ds: str, task_type: str, target: str, d: int, **params: Any) -> dict[str, Any]:
-    return {
-        "name": "e2e",
-        "task_type": task_type,
-        "dataset_id": ds,
-        "params": {
-            "target_column": target,
-            "feature_columns": [f"f{i}" for i in range(d)],
-            **params,
-        },
-        "execution": {"min_devices": 1, "max_devices": 1},
-    }
-
-
-def drive(worker: Worker, done: Callable[[], bool], timeout: float = 45) -> None:
-    """Heartbeat like the real worker loop until `done()`; fail loudly on timeout."""
-    end = time.time() + timeout
-    while time.time() < end:
-        worker.heartbeat_once()
-        if done():
-            return
-        time.sleep(0.25)
-    raise AssertionError("timed out waiting for the task")
-
-
-def status(client: TestClient, h: dict[str, str], task_id: str) -> dict[str, Any]:
-    r = client.get(f"{V1}/tasks/{task_id}/status", headers=h)
-    assert r.status_code == 200, r.text
-    return cast(dict[str, Any], r.json())
-
-
-def test_gaussian_nb_one_device_end_to_end(env: tuple[TestClient, Mongo, Settings]) -> None:
+def test_gaussian_nb_one_device_end_to_end(env: Env) -> None:
     client, mongo, s = env
     h = signup(client)
     csv = clf_csv()
@@ -216,7 +117,7 @@ def test_gaussian_nb_one_device_end_to_end(env: tuple[TestClient, Mongo, Setting
     assert dev is not None and dev["status"] == "idle" and dev["stats"]["succeeded"] == 1
 
 
-def test_linear_ridge_one_device_end_to_end(env: tuple[TestClient, Mongo, Settings]) -> None:
+def test_linear_ridge_one_device_end_to_end(env: Env) -> None:
     client, _, _ = env
     h = signup(client)
     csv = reg_csv()
@@ -252,7 +153,7 @@ def test_linear_ridge_one_device_end_to_end(env: tuple[TestClient, Mongo, Settin
 
 # ---------- result intake edge cases ----------
 def _dispatch_one(
-    env: tuple[TestClient, Mongo, Settings], email: str
+    env: Env, email: str
 ) -> tuple[TestClient, dict[str, str], Worker, dict[str, Any], str]:
     """Create a task and return the run directive's assignment without executing it."""
     client, _, _ = env
@@ -300,7 +201,7 @@ def _result_body(w: Worker, a: dict[str, Any], client: TestClient) -> dict[str, 
     }
 
 
-def test_duplicate_result_is_idempotent(env: tuple[TestClient, Mongo, Settings]) -> None:
+def test_duplicate_result_is_idempotent(env: Env) -> None:
     client, h, w, a, tid = _dispatch_one(env, "dup@example.com")
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
     assert client.post(f"{base}/start", headers=w._dev()).status_code == 200
@@ -320,7 +221,7 @@ def test_duplicate_result_is_idempotent(env: tuple[TestClient, Mongo, Settings])
     drive(w, lambda: status(client, h, tid)["task"]["status"] == "completed")
 
 
-def test_invalid_result_is_rejected_and_counted(env: tuple[TestClient, Mongo, Settings]) -> None:
+def test_invalid_result_is_rejected_and_counted(env: Env) -> None:
     client, h, w, a, tid = _dispatch_one(env, "bad@example.com")
     _, mongo, s = env
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
@@ -345,7 +246,7 @@ def test_invalid_result_is_rejected_and_counted(env: tuple[TestClient, Mongo, Se
     assert r2.status_code == 409  # assignment is already rejected -> late/closed
 
 
-def test_payload_digest_mismatch_rejected(env: tuple[TestClient, Mongo, Settings]) -> None:
+def test_payload_digest_mismatch_rejected(env: Env) -> None:
     client, _, w, a, _ = _dispatch_one(env, "digest@example.com")
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
     client.post(f"{base}/start", headers=w._dev())
@@ -355,7 +256,7 @@ def test_payload_digest_mismatch_rejected(env: tuple[TestClient, Mongo, Settings
     assert r.status_code == 422 and "payload_sha256 mismatch" in str(r.json()["error"]["details"])
 
 
-def test_other_device_cannot_touch_assignment(env: tuple[TestClient, Mongo, Settings]) -> None:
+def test_other_device_cannot_touch_assignment(env: Env) -> None:
     client, _, w, a, _ = _dispatch_one(env, "owner@example.com")
     intruder = make_worker(client, "intruder@example.com", "intruder")
     base = f"{V1}/worker/assignments/{a['assignment_id']}"
@@ -371,7 +272,7 @@ def test_other_device_cannot_touch_assignment(env: tuple[TestClient, Mongo, Sett
 
 
 def test_late_result_after_failure_is_409_and_logged(
-    env: tuple[TestClient, Mongo, Settings],
+    env: Env,
 ) -> None:
     client, _, w, a, tid = _dispatch_one(env, "late@example.com")
     _, mongo, s = env
@@ -393,7 +294,7 @@ def test_late_result_after_failure_is_409_and_logged(
 
 
 def test_tampered_input_never_served_for_wrong_digest(
-    env: tuple[TestClient, Mongo, Settings],
+    env: Env,
 ) -> None:
     client, _, w, a, _ = _dispatch_one(env, "digest2@example.com")
     r = client.get(V1 + a["input_url"].removeprefix("/api/v1"), headers=w._dev())
@@ -404,7 +305,7 @@ def test_tampered_input_never_served_for_wrong_digest(
 
 
 def test_waiting_reasons_explain_why_a_task_is_queued(
-    env: tuple[TestClient, Mongo, Settings],
+    env: Env,
 ) -> None:
     """A queued task says which devices cannot take it and why (no silent waiting)."""
     client, mongo, s = env

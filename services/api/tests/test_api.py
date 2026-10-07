@@ -139,6 +139,7 @@ def test_background_reconciler_marks_offline(mongo: Mongo) -> None:
     s = Settings(
         mongodb_db=f"proofnet_test_loop_{int(time.time())}",
         jwt_secret="test-secret-test-secret-test-secret-123",
+        status_cache_seconds=0,
         offline_after_seconds=1,
         reconciler_interval_seconds=1,
     )
@@ -232,7 +233,9 @@ def test_task_types_catalog(client: TestClient, user_headers: dict[str, str]) ->
 def test_validate_reports_errors(client: TestClient, user_headers: dict[str, str]) -> None:
     ds = _upload(client, user_headers, _csv()).json()
     ok = client.post(f"{V1}/tasks/validate", headers=user_headers, json=_manifest(ds["id"])).json()
-    assert ok["ok"] and ok["errors"] == [] and ok["plan_preview"] is None
+    assert ok["ok"] and ok["errors"] == []
+    pv = ok["plan_preview"]  # plan preview from the current device pool (P5)
+    assert pv["estimated"] is True and pv["n_train"] == 320 and "shares" in pv
     bad = _manifest(ds["id"], params={"target_column": "nope", "feature_columns": ["f0"]})
     r = client.post(f"{V1}/tasks/validate", headers=user_headers, json=bad).json()
     assert not r["ok"] and any("not found" in e for e in r["errors"])

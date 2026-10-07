@@ -31,6 +31,7 @@ def settings(test_db_name: str) -> Settings:
         mongodb_uri=_BASE.mongodb_uri,
         mongodb_db=test_db_name,
         jwt_secret="test-secret-test-secret-test-secret-123",
+        status_cache_seconds=0,
         offline_after_seconds=20,
         reconciler_interval_seconds=3600,  # tests drive reconciler passes explicitly
     )
@@ -52,3 +53,22 @@ def mongo(settings: Settings) -> Iterator[MongoClient[dict[str, Any]]]:
 @pytest.fixture()
 def user_headers(client: TestClient) -> dict[str, str]:
     return signup(client)
+
+
+@pytest.fixture(scope="module")
+def env() -> Iterator[tuple[TestClient, MongoClient[dict[str, Any]], Settings]]:
+    """Isolated database per module (so devices from other tests cannot take the work)."""
+    s = Settings(
+        mongodb_uri=_BASE.mongodb_uri,
+        mongodb_db=f"proofnet_test_e2e_{secrets.token_hex(4)}",
+        jwt_secret="test-secret-test-secret-test-secret-123",
+        status_cache_seconds=0,
+        reconciler_interval_seconds=1,
+    )
+    mongo: MongoClient[dict[str, Any]] = MongoClient(s.mongodb_uri, tz_aware=True)
+    try:
+        with TestClient(create_app(s)) as c:
+            yield c, mongo, s
+    finally:
+        mongo.drop_database(s.mongodb_db)
+        mongo.close()
