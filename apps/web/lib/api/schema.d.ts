@@ -337,7 +337,7 @@ export interface paths {
         };
         /**
          * Task Status
-         * @description Live snapshot: task, chunks, assignments (with device names), artifacts.
+         * @description Live snapshot: task, chunks, assignments (with device names), artifacts. Cached ~1 s.
          */
         get: operations["task_status_api_v1_tasks__task_id__status_get"];
         put?: never;
@@ -717,6 +717,11 @@ export interface components {
             device_id?: string | null;
             /** Id */
             id: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
             /** Task Id */
             task_id?: string | null;
             /**
@@ -843,6 +848,14 @@ export interface components {
         NetworkDevice: {
             /** Current Assignment Id */
             current_assignment_id?: string | null;
+            /** Current Chunk Index */
+            current_chunk_index?: number | null;
+            /** Current Rows */
+            current_rows?: number | null;
+            /** Current Task Id */
+            current_task_id?: string | null;
+            /** Current Task Name */
+            current_task_name?: string | null;
             device_type: components["schemas"]["DeviceType"];
             /** Id */
             id: string;

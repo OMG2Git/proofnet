@@ -14,6 +14,76 @@ import {
 
 type Column = { name: string; dtype: string };
 
+type PreviewShare = {
+  device_name: string | null;
+  score_cells_per_sec: number;
+  weight: number;
+  rows: number;
+  n_chunks: number;
+  est_seconds: number;
+};
+type Preview = {
+  n_train: number;
+  eligible_devices: number;
+  min_devices: number;
+  ready_to_start: boolean;
+  message?: string;
+  explanation?: string;
+  shares: PreviewShare[];
+  not_eligible: string[];
+};
+
+function PlanPreview({ pv }: { pv: Preview }) {
+  return (
+    <div data-testid="preview">
+      <p>
+        <strong>Plan preview</strong>{" "}
+        <span className="muted">
+          (estimate from the devices online now; ~{pv.n_train} training rows; {pv.eligible_devices} eligible device(s))
+        </span>
+      </p>
+      {!pv.ready_to_start && <p className="warn">{pv.message}</p>}
+      {pv.shares.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Benchmark</th>
+              <th>Weight</th>
+              <th>Rows</th>
+              <th>Chunks</th>
+              <th>Predicted compute</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pv.shares.map((s, i) => (
+              <tr key={i}>
+                <td>{s.device_name}</td>
+                <td>{(s.score_cells_per_sec / 1e6).toFixed(2)} M cells/s</td>
+                <td>{(s.weight * 100).toFixed(1)}%</td>
+                <td>{s.rows}</td>
+                <td>{s.n_chunks}</td>
+                <td>{s.est_seconds < 1 ? `${Math.round(s.est_seconds * 1000)} ms` : `${s.est_seconds.toFixed(2)} s`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {pv.explanation && <p className="muted">{pv.explanation}</p>}
+      {pv.not_eligible.length > 0 && (
+        <details>
+          <summary className="muted">Devices not eligible right now ({pv.not_eligible.length})</summary>
+          <ul className="muted">
+            {pv.not_eligible.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function Wizard() {
   const router = useRouter();
   const [types, setTypes] = useState<TaskTypeInfo[]>([]);
@@ -201,7 +271,7 @@ function Wizard() {
                 onChange={(e) => setSpecial(Number(e.target.value))}
               />
             </label>
-            <label>
+            <label title="The task waits (queued) until this many eligible devices are online">
               Min devices
               <input type="number" min={1} max={8} value={minDevices} onChange={(e) => setMinDevices(Number(e.target.value))} />
             </label>
@@ -244,7 +314,7 @@ function Wizard() {
               {w}
             </p>
           ))}
-          <p className="muted">Plan preview (rows per device) is available from P5.</p>
+          {report.plan_preview && <PlanPreview pv={report.plan_preview as Preview} />}
         </div>
       )}
     </section>

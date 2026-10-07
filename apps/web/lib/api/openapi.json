@@ -748,6 +748,11 @@
             "title": "Id",
             "type": "string"
           },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
           "task_id": {
             "anyOf": [
               {
@@ -1057,6 +1062,50 @@
               }
             ],
             "title": "Current Assignment Id"
+          },
+          "current_chunk_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Chunk Index"
+          },
+          "current_rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Rows"
+          },
+          "current_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Task Id"
+          },
+          "current_task_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Task Name"
           },
           "device_type": {
             "$ref": "#/components/schemas/DeviceType"
@@ -3624,7 +3673,7 @@
     },
     "/api/v1/tasks/{task_id}/status": {
       "get": {
-        "description": "Live snapshot: task, chunks, assignments (with device names), artifacts.",
+        "description": "Live snapshot: task, chunks, assignments (with device names), artifacts. Cached ~1 s.",
         "operationId": "task_status_api_v1_tasks__task_id__status_get",
         "parameters": [
           {

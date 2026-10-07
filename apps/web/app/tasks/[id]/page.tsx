@@ -8,6 +8,64 @@ import { api, type ArtifactOut, type EventOut, type TaskStatus } from "@/lib/api
 
 const STATES = ["queued", "running", "aggregating", "completed"] as const;
 
+type Share = {
+  device_id: string;
+  device_name: string | null;
+  score_cells_per_sec: number;
+  weight: number;
+  rows: number;
+  n_chunks: number;
+  est_seconds: number;
+};
+type PlanDoc = { explanation?: string; shares?: Share[] };
+
+function fmtSec(v: number | undefined | null): string {
+  if (v === undefined || v === null) return "—";
+  return v < 1 ? `${Math.round(v * 1000)} ms` : `${v.toFixed(2)} s`;
+}
+
+/** Horizontal bars per device over the task's real time window (from assignment timestamps). */
+function Lanes({ st }: { st: TaskStatus }) {
+  const asgs = st.assignments.filter((a) => a.assigned_at);
+  if (asgs.length === 0) return null;
+  const chunkIndex = new Map(st.chunks.map((c) => [c.id, c.index]));
+  const serverNow = new Date(st.server_time).getTime();
+  const start = Math.min(...asgs.map((a) => new Date(a.assigned_at).getTime()));
+  const end = Math.max(...asgs.map((a) => (a.finished_at ? new Date(a.finished_at).getTime() : serverNow)));
+  const span = Math.max(end - start, 1);
+  const lanes = new Map<string, TaskStatus["assignments"]>();
+  for (const a of asgs) lanes.set(a.device_name ?? a.device_id, [...(lanes.get(a.device_name ?? a.device_id) ?? []), a]);
+  return (
+    <>
+      <h1>Device lanes</h1>
+      <div className="lanes" data-testid="lanes">
+        {[...lanes.entries()].map(([name, list]) => (
+          <div className="lane" key={name}>
+            <div className="lane-name">{name}</div>
+            <div className="lane-track">
+              {list.map((a) => {
+                const s0 = new Date(a.started_at ?? a.assigned_at).getTime();
+                const e0 = a.finished_at ? new Date(a.finished_at).getTime() : serverNow;
+                return (
+                  <div
+                    key={a.id}
+                    className={`bar ${a.status}`}
+                    style={{ left: `${((s0 - start) / span) * 100}%`, width: `${Math.max(((e0 - s0) / span) * 100, 1.5)}%` }}
+                    title={`chunk ${chunkIndex.get(a.chunk_id)} · ${a.status} · ${Math.round(e0 - s0)} ms`}
+                  >
+                    c{chunkIndex.get(a.chunk_id)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="muted">window: {fmtSec(span / 1000)} (assignment start to finish, real timestamps)</div>
+      </div>
+    </>
+  );
+}
+
 function fmtMs(v: number | undefined | null): string {
   return v === undefined || v === null ? "—" : `${Math.round(v)} ms`;
 }
@@ -101,6 +159,45 @@ function Monitor() {
 
       <h1>State</h1>
       <Timeline status={t.status} history={t.status_history} />
+
+      {(t.plan as PlanDoc | null)?.shares && (
+        <>
+          <h1>Plan vs actual</h1>
+          <p className="muted">{(t.plan as PlanDoc).explanation}</p>
+          <table data-testid="plan">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Benchmark</th>
+                <th>Weight</th>
+                <th>Rows</th>
+                <th>Chunks</th>
+                <th>Predicted compute</th>
+                <th>Actual compute</th>
+              </tr>
+            </thead>
+            <tbody>
+              {((t.plan as PlanDoc).shares ?? []).map((sh) => {
+                const mine = st.assignments.filter((a) => a.device_id === sh.device_id && a.status === "succeeded");
+                const actual = mine.reduce((sum, a) => sum + (a.timings?.["compute_ms"] ?? 0), 0);
+                return (
+                  <tr key={sh.device_id}>
+                    <td>{sh.device_name ?? sh.device_id}</td>
+                    <td>{(sh.score_cells_per_sec / 1e6).toFixed(2)} M cells/s</td>
+                    <td>{(sh.weight * 100).toFixed(1)}%</td>
+                    <td>{sh.rows}</td>
+                    <td>{sh.n_chunks}</td>
+                    <td>{fmtSec(sh.est_seconds)}</td>
+                    <td>{mine.length ? fmtSec(actual / 1000) : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <Lanes st={st} />
 
       <h1>Chunks and devices</h1>
       {st.chunks.length === 0 ? (
@@ -201,7 +298,7 @@ function Monitor() {
 
       <h1>Events</h1>
       <pre className="log" data-testid="events">
-        {events.map((e) => `${new Date(e.ts).toLocaleTimeString()}  ${e.type}`).join("\n") || "—"}
+        {events.map((e) => `${new Date(e.ts).toLocaleTimeString()}  ${e.message || e.type}`).join("\n") || "—"}
       </pre>
     </section>
   );

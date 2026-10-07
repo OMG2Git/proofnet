@@ -57,7 +57,13 @@ function Network() {
             <div className="muted">
               last seen {d.last_seen_age_seconds === null || d.last_seen_age_seconds === undefined ? "never" : `${Math.round(d.last_seen_age_seconds)}s ago`}
             </div>
-            <div className="muted">{d.current_assignment_id ? `chunk: ${d.current_assignment_id}` : "no chunk"}</div>
+            <div className="muted" data-testid="holding">
+              {d.current_chunk_index !== null && d.current_chunk_index !== undefined
+                ? `holds chunk ${d.current_chunk_index} (${d.current_rows} rows) of "${d.current_task_name}"`
+                : d.current_assignment_id
+                  ? `assignment ${d.current_assignment_id}`
+                  : "no chunk"}
+            </div>
           </div>
         ))}
       </div>

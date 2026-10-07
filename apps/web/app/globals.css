@@ -67,6 +67,14 @@ th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--lin
 .badge.succeeded, .badge.accepted { background: #dcf3e6; color: var(--ok); }
 .badge.assigned, .badge.pending { background: #e8ecf5; }
 .badge.rejected, .badge.expired { background: #fbe3e1; color: var(--err); }
+.lanes { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.lane { display: flex; align-items: center; gap: 12px; margin: 6px 0; }
+.lane-name { width: 150px; font-size: 13px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lane-track { position: relative; flex: 1; height: 24px; background: #eef1f6; border-radius: 4px; }
+.bar { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: #cdd6ee; color: #1b1f27; font-size: 11px; line-height: 20px; padding: 0 4px; overflow: hidden; }
+.bar.succeeded { background: #8ed1ab; }
+.bar.running, .bar.assigned { background: #f4d27a; }
+.bar.failed, .bar.rejected, .bar.expired { background: #f0a8a3; }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #14171c; --card: #1c2027; --text: #e6e9ef; --muted: #98a0ae; --line: #2c323d; --accent: #6b93ff; }
   input, select { background: #14171c; color: var(--text); }
