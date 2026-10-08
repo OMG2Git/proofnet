@@ -51,7 +51,7 @@ The MVP is deliberately narrow so that it is **real**:
 | D11 | **Image CNN = stateless synchronous data-parallel rounds** (added P6b). The dataset stays on the backend; each assignment carries one slice of a mini-batch + the current weights; devices return gradient *sums*; the backend adds, divides, applies SGD. Mathematically identical to centralized SGD on the same batch, and re-checked on sampled rounds. | Phones cannot hold or download a dataset; a stateless round also makes every existing failure rule (retry, exclusion, expiry, cancel) apply unchanged. |
 | D10 | **Contract-first:** FastAPI's OpenAPI schema is the single source of API types; the TypeScript client types are generated from it. | Keeps frontend, worker and backend in sync for a student team. |
 
-What the MVP explicitly does **not** do: arbitrary ML frameworks, user Python code, deep learning, blockchain/tokens, consensus, Kubernetes, microservices, trust scores, PWAV. See `CLAUDE.md` § Scope.
+What the MVP explicitly does **not** do: arbitrary ML frameworks, user Python code, deep learning, blockchain/tokens, consensus, Kubernetes, microservices. (Trust scores, PWAV, verification and rewards were out of the MVP and are implemented in Part 2, §17.) See `CLAUDE.md` § Scope.
 
 ---
 
@@ -143,7 +143,10 @@ proofnet/
 │       ├── aggregation/         merge, finalize, reference check, reports
 │       ├── artifacts/           storage + download
 │       ├── events/              append-only event log + status snapshots
-│       ├── verification/        hook interfaces (MVP: pass-through)   ← Part 2 grows here
+│       ├── verification/        verifier (audit by recomputation), forensics, acceptance states — Part 2
+│       ├── trust/               pwav math, trust store/calibration, population simulator, /trust API — Part 2
+│       ├── rewards/             reward ledger (entries + events), /rewards API — Part 2
+│       ├── security/            quarantine, rate limit/lockout, headers, security events, /security API — Part 2
 │       ├── training/            iterative (round-based) tasks: rounds, model states — P6b
 │       ├── image_tasks/         image dataset upload, CNN task validate/create, training curve — P6b
 │       └── reconciler.py        periodic idempotent maintenance loop
@@ -779,7 +782,19 @@ erDiagram
 
 Indexes (minimum): `devices(status, last_seen_at)`, `chunks(task_id, status)`, `assignments(device_id, status)`, `assignments(chunk_id)`, `events(task_id, ts)`, `tasks(owner_user_id, created_at)`.
 
-**Future Part 2 collections** (not created in the MVP; IDs/fields above already support them): `verification_records`, `challenges`, `trust_profiles`, `reputation_events`, `attack_events`, `reward_records`.
+**Part 2 collections (§17):**
+
+| Collection | Key fields |
+|---|---|
+| `verification_records` | `task_id`, `chunk_id`, `assignment_id`, `device_id`, `class_key`, `mode`, `audit_probability`, `draw`, `audited`, `decision`, `discrepancy`, `tolerance`, `tolerance_source`, `calibration_limit`, `evidence`, `threshold`, `suspicion`, `accused` — one per received result (plus `retroactive` / `forensic` records) |
+| `device_trust` | `_id`=device id, `user_id`, `status` (`probation/trusted/watch/quarantined`), `results_seen`, `audits`, `n_clean`, `exceedances`, `e_state{n, exceed, R[]}`, `evidence`, `suspicion`, `memory`, `inherited_memory`, `quarantine{at, reason, source}`, `history[]` (≤ 60) |
+| `calibrations` | `_id`=class key, `samples[]` (≤ 5000 honest discrepancies), `n`, `limit` |
+| `reward_entries` | `_id`=assignment id, `user_id`, `device_id`, `task_id`, `work_units`, `trust`, `multiplier`, `amount`, `acceptance`, `status` (`pending/confirmed/revoked`) |
+| `reward_events` | append-only `accrue/confirm/revoke` with `seq`; balances are replayable from this alone |
+| `security_events` | `ts`, `kind`, `severity`, `user_id?`, `device_id?`, `task_id?`, `data{}` |
+| `login_attempts` | `_id`=e-mail, `fails`, `locked_until` |
+
+`devices` gains `quarantined`; `tasks.verification_policy.mode` is `adaptive|full|off`; `tasks.integrity_flags[]` marks finished tasks containing a result later proven wrong. `challenges`, `attack_events` and `reputation_events` from the original plan were not needed (ground truth lives in the attacker worker's own log; trust history lives in `device_trust.history`).
 
 ---
 
@@ -816,6 +831,12 @@ Auth: users use `Authorization: Bearer <JWT>`; workers use `Authorization: Beare
 | `POST /worker/assignments/{id}/result` | device | Submit partial result |
 | `POST /worker/assignments/{id}/fail` | device | Report failure |
 | `POST /admin/demo/reset` | admin | Clear demo tasks/datasets (keeps users/devices) |
+| `GET /trust/overview` | user (admin: all) | Device trust profiles, calibration classes, recent verification records, PWAV parameters |
+| `GET /trust/devices/{id}`, `GET /trust/records?task_id=` | owner / admin | One profile with history; verification records of a task or of my devices |
+| `POST /trust/simulate` | user | Population simulation of the audit policy (pure model) |
+| `GET /rewards/me`, `GET /rewards/network`, `GET /rewards/ledger/check` | user | Balances (pending/confirmed/revoked), entries, leaderboard, replay-vs-entries integrity check |
+| `GET /security/overview` | user (admin: all) | Event log, quarantined devices, 24 h counters, list of controls |
+| `POST /security/devices/{id}/quarantine`, `…/reinstate` | admin | Manual quarantine / reinstatement |
 
 Error format: `{ "error": { "code": "VALIDATION_FAILED", "message": "…", "details": [...] } }`.
 
@@ -836,7 +857,7 @@ Error format: `{ "error": { "code": "VALIDATION_FAILED", "message": "…", "deta
 
 **What the MVP does not protect (stated in the UI and report):**
 
-- A contributor can return **well-formed but wrong** statistics. MVP results are `accepted_unverified`. Detecting this is Part 2.
+- A contributor can return **well-formed but wrong** statistics. Part 1 accepted them unverified; Part 2 (§17) audits them probabilistically (never below a floor), repairs finished tasks via the reference check + forensics, and quarantines repeat offenders. Corruptions smaller than the tolerance and unaudited cheats on already-merged CNN rounds remain possible (§17.8).
 - **Data confidentiality:** contributors receive raw rows of their partition. Do not upload sensitive data.
 - Sybil devices, collusion, denial-of-service by many fake devices, and token theft from a contributor's own browser.
 - It is a research prototype, not production-grade secure remote execution.
@@ -909,55 +930,98 @@ Three processes plus the database — no Docker, queue or cache required. Testin
 
 ---
 
-## 17. Part 2 insertion points
+## 17. Part 2 — verification, trust, rewards, security (implemented in P8–P11)
 
-Part 1 is built so that Part 2 *adds* modules rather than rewriting the compute fabric.
+> Status 2026-10-08: implemented and tested ahead of the M3 gate at the owner's explicit request (the "Part 2 only after M3" rule in `CLAUDE.md` was overridden by the owner; Part 1's real-phone checks remain open and are the owner's to run). The Part 1 compute fabric was extended through the insertion points below; nothing was rewritten.
+
+### 17.1 Flow
 
 ```mermaid
 flowchart LR
-    subgraph P1["Part 1 (MVP) — exists"]
-        RES["Partial result received"] --> SV["Structural validation"]
-        SV --> HOOK["VerificationHook<br/>MVP: accept_unverified"]
-        HOOK --> AGGR["Aggregation uses accepted partials"]
-        SCHED["Scheduler"] --> ELIG["DeviceEligibilityPolicy<br/>MVP: allow all"]
-        SCHED --> AP["AssignmentPolicy<br/>MVP: one primary per chunk"]
-    end
-
-    subgraph P2["Part 2 — added later"]
-        AUD["Audit selector<br/>adaptive audit probability + floor"]
-        REP["Replica / challenge chunks<br/>purpose = replica / audit / challenge"]
-        VER["Verifier<br/>kernel.compare() + per-class tolerance limits"]
-        EP["Evidence (e-process / betting)<br/>per device, persistent suspicion memory"]
-        TR["Trust profile & reputation"]
-        ATT["Attack simulation harness"]
-        RW["Contribution validation & rewards"]
-    end
-
-    AP -. replaced by .-> AUD
-    AUD --> REP
-    REP --> RES
-    HOOK -. replaced by .-> VER
-    VER --> EP --> TR
-    TR -. feeds .-> ELIG
-    VER --> RW
-    TR --> RW
-    ATT -. drives malicious workers .-> RES
+    RES["Result received<br/>POST /worker/assignments/{id}/result"] --> SV["Structural validation<br/>(shapes, finite, counts)"]
+    SV --> DEC{"Audit?<br/>HMAC draw < p(device)"}
+    DEC -- "no" --> UNV["accepted_unverified<br/>reward pending"]
+    DEC -- "yes" --> REC["Backend recomputes the chunk<br/>discrepancy vs tolerance"]
+    REC -- "within tolerance" --> VER["verified<br/>reward confirmed<br/>+ honest sample for calibration"]
+    REC -- "exceeds" --> REJ["rejected_verification<br/>assignment rejected, chunk re-queued<br/>generic 422 to the worker"]
+    VER --> EV["Evidence update (e-detector)<br/>suspicion, memory, trust"]
+    REJ --> EV
+    EV -- "evidence ≥ threshold" --> Q["Quarantine<br/>no new work, clawback,<br/>retroactive audit"]
+    UNV --> AGG["Aggregation"]
+    VER --> AGG
+    AGG --> REF{"Reference check<br/>(merged vs centralized)"}
+    REF -- "fails" --> FOR["Forensics: recompute every chunk,<br/>name culprit, quarantine, re-run chunk"]
+    FOR --> AGG
+    REF -- "passes" --> DONE["Task completed<br/>pending rewards confirmed"]
 ```
 
-| Insertion point | MVP state | Part 2 use |
-|---|---|---|
-| `assignments.purpose` | always `primary` | `replica` (duplicate execution), `audit` |
-| `chunks.role` | always `work` | `challenge` — hidden chunks with a known answer |
-| `AssignmentPolicy` | one assignment per chunk | Choose which chunks/devices to audit with **adaptive audit probability** and a **minimum audit floor** (PWAV) |
-| `partial_results.acceptance` + `VerificationHook` | `accepted_unverified` | `verified` / `disputed` / `rejected_verification`; aggregation can hold until verified |
-| `kernel.compare(a, b)` | used for the reference check | Discrepancy statistic between replicas or vs backend recomputation |
-| `runtime_fingerprint` per assignment | recorded | Defines the "class" for **per-class order-statistic tolerance limits** (e.g. kernel × version × runtime kind), calibrated from honest replica discrepancies |
-| `devices.stats` + `events` | counters + log | Initial evidence; **e-process** state and **persistent suspicion memory** live in `trust_profiles` |
-| `DeviceEligibilityPolicy` / scheduling weight | allow all / benchmark | Exclude or down-weight suspicious devices |
-| Fault-injection flags in the CLI worker | for reliability tests | Grow into attack modes (random, scaled, lazy, partial drop, colluding) |
-| `assignments.work_units` + accepted status | recorded | Reward = verified work units with trust adjustments |
+### 17.2 Verification (P8)
 
-Important property of the chosen workloads: the backend can **recompute any single chunk cheaply** from the stored prepared data, so audits can use backend recomputation as well as device replication. This lets Part 2 measure false-accusation behaviour with exact ground truth before relying on replicas.
+- **Audit by backend recomputation.** The MVP kernels are cheap enough to recompute any single chunk on the backend from the stored prepared data (`verification/recompute.py`: `expected_partial`, `discrepancy`). The oracle is the backend itself, so audits are immune to collusion between devices. (Replica assignments and hidden challenge chunks from the original plan were **not** built: recomputation gives exact ground truth for these workloads and a replica would only add a second untrusted opinion.)
+- **Where it runs.** Inside result intake, after structural validation and **before** the assignment flips to `succeeded`. A failed audit releases the attempt exactly like a structural failure (`assignment: rejected`, `error.code VERIFICATION_FAILED`, chunk re-queued with the device excluded for that chunk); the worker only sees the generic `422 INVALID_RESULT`.
+- **Modes** per task (`verification_policy.mode`): `adaptive` (default), `full` (audit every result), `off` (the Part 1 behaviour; legacy `none` is read as `off`).
+- **The audit draw is reproducible and unpredictable:** `u = HMAC-SHA256(key, assignment_id) / 2^64` with a server-side key derived from the JWT secret; audited iff `u < p`. The draw, probability and decision are stored in `verification_records`, so any record can be re-derived.
+- **Discrepancy.** GNB/Ridge: `kernel.server.compare` (normwise relative, max over fields); CNN: max of the relative gradient-sum difference, the loss-sum difference and the correct-count difference.
+- **Tolerance per class.** A *class* is `kernel@version | runtime kind` (e.g. `gaussian_nb_train@1|pyodide`). `tolerance = min(hard, max(margin × L, floor))` where `L` is the class's (p, γ) tolerance limit (§17.3) once `calibrations` holds enough honest samples, `hard` is the kernel's fixed numerical bound (`TOLERANCE`/`GRADIENT_TOLERANCE`) and `floor` the smallest tolerance the trust system uses (`AUDIT_FLOOR`). Until the class has `ln(1−γ)/ln p` samples (59 for p = .95; 99 for p = .97) the tolerance is `hard`. Only discrepancies ≤ `hard` from devices not under suspicion are ever added to a calibration, and `hard` caps the result, so a poisoned calibration can never loosen the check.
+- **Exceedance** `Z = 1` iff discrepancy > tolerance. An exceedance is also a rejection: the result is not merged.
+- **Acceptance states** on `partial_results`: `pending` → `verified` | `accepted_unverified` | `rejected_verification` | `rejected_structural` | `rejected_forensic` | `rejected_retroactive`. Aggregation merges `verified` and `accepted_unverified` only.
+- **Safety net 1 — reference check + forensics.** If the finished task's merged statistics differ from the centralized recomputation, `verification/forensics.py` recomputes every chunk, names the culprit chunks (discrepancy > `hard`: a deterministic proof), marks them `rejected_forensic`, revokes their rewards, quarantines the devices, re-queues the chunks (task `aggregating → running`) and aggregation runs again. The final model is correct even if an unaudited cheat got through.
+- **Safety net 2 — retroactive audit.** On quarantine, all earlier `accepted_unverified` results of that device are recomputed: correct ones become `verified`; wrong ones are rejected, their rewards revoked and, in a still-running CSV task, the chunk is re-queued. Finished/iterative tasks get `integrity_flags` (a merged CNN round cannot be un-merged; gradient payloads are dropped after a round closes).
+- **Collections:** `verification_records` (one per result: mode, probability, draw, audited, discrepancy, tolerance and its source, evidence, decision), `calibrations`, `device_trust`.
+
+### 17.3 PWAV: Evidence-Adaptive Auditing (P10) — `trust/pwav.py`
+
+> Honest note: PWAV is implemented here from the mechanism summary in `CLAUDE.md` (per-class order-statistic tolerance limits, betting e-process evidence, adaptive audit probability with a minimum floor, persistent suspicion memory), **not** from the original paper, which was not available. The guarantees below are proved for *this* implementation (see the module docstring and `tests/test_pwav.py`); they may differ in detail from the paper's.
+
+1. **Distribution-free (p, γ) tolerance limit.** For `n` honest discrepancy samples the `j`-th smallest is an upper tolerance limit iff `P(Bin(n, p) ≤ j−1) ≥ γ`; with probability ≥ γ at least a fraction `p` of future honest discrepancies lie below it. Defaults: `p = 1 − q0 = 0.97`, `γ = 0.95`, margin ×10.
+2. **Betting e-detector with lifetime false-accusation control.** For each audit `Z ∈ {0,1}`; under honesty `E[Z | past] ≤ q0`, so `f = 1 + λ(Z − q0)` (0 < λ < 1/q0) has conditional mean ≤ 1. Per bet λ ∈ {1,2,4,8,16,30}: Shiryaev–Roberts `R_t = (R_{t−1} + 1)·f_t`, averaged over λ (restarting at every audit, so a sleeper cannot hide behind a long honest history). `R_t` is a sum over start times of products that are non-negative supermartingales started at 1; if `R_t ≥ h` within `N` audits some term is ≥ h/N, Ville's inequality bounds that by `N/h` and a union bound over starts gives `P(false alarm within N audits) ≤ N²/h`. Accuse when `R_t ≥ h_m = N_m² / α_m` for audit block `m` (`N_m = 1000·2^m`, `α_m = α·6/(π²(m+1)²)`, Σα_m ≤ α): **the probability that an honest device is ever accused is ≤ α** (conditionally on the tolerance limit being valid). Defaults: `α = 1e-3`; a device that cheats on every audit is accused after ≈ 12 audits (`tests/test_pwav.py`).
+3. **Suspicion** = log-scale position of the evidence between its all-clean baseline and the threshold, in [0, 1].
+4. **Adaptive audit probability.** `p = 1` during probation (first 5 results); then `base(n_clean) = floor + (initial − floor)/(1 + n_clean/τ)` (floor 5 %, initial 30 %, τ = 10 clean audits), raised to `base + (1 − base)·memory`. Never below the floor, for any history.
+5. **Persistent suspicion memory.** `memory ← max(0.98·memory, suspicion)`: evidence raises it at once, it fades slowly, so a device that cheated once stays heavily audited for a few hundred audits even if it behaves afterwards. It survives sessions because it lives in `device_trust`.
+6. **Trust and reward multiplier.** `trust = (1 − max(suspicion, memory)) · n_clean/(n_clean + 10)`; `reward_multiplier = 0.5 + 0.5·trust`.
+
+### 17.4 Trust profile, quarantine, reinstatement
+
+- `device_trust` (one per device): `status` (`probation → trusted ⇄ watch → quarantined`), counters, e-detector state, evidence, suspicion, memory, inherited memory, bounded history, quarantine record.
+- **Quarantine** (`security/quarantine.py`) is sticky and triggered by (a) the e-detector, (b) forensics, (c) an administrator. It sets `devices.quarantined` (the eligibility rule excludes the device: `"quarantined after failed verification"` appears in the task's waiting reasons), releases the device's active assignments, claws back never-verified rewards, runs the retroactive audit and writes a `critical` security event. The device keeps heartbeating and stays visible, it just receives no work.
+- **Reinstatement** is explicit and admin-only: back to probation, `memory = 0.6`, evidence reset.
+- **Sybil/whitewashing resistance:** a new device starts on probation and inherits half of the highest suspicion memory among its owner's other devices (1.0 for a quarantined one).
+
+### 17.5 Rewards (P11) — `rewards/ledger.py`
+
+Credits are an internal accounting unit; no money, no token. `amount = work_units/1e6 × reward_rate × reward_multiplier(trust)`. One `reward_entries` document per accepted assignment (`_id` = assignment id, so accrual is idempotent), one append-only `reward_events` document per transition (`accrue`, `confirm`, `revoke`, with a strictly increasing `seq`). `verified` work is `confirmed` at once; `accepted_unverified` work is `pending` and becomes `confirmed` when its task completes (the end-to-end check has passed); a quarantined device loses (`revoked`) every entry that was never individually verified; rejected results earn nothing. `GET /rewards/ledger/check` replays the event log and compares it with the entries (balances are reproducible from the events alone).
+
+### 17.6 Security hardening
+
+Login lockout (5 failures → 5 min, also for unknown e-mails, no enumeration), sliding-window rate limits on sign-up / sign-in / device registration (per address, last `X-Forwarded-For` entry), device cap per account, security headers on every response, tenant isolation (a device can only touch its own assignments; probing a foreign one is a 404 + a `foreign_assignment_access` event), conflicting re-submission detection, generic error to the worker on a failed audit, append-only `security_events` (shown on `/security`). Pre-existing: no user code, no pickle, hashed tokens/passwords, SHA-256 on inputs/kernels/results.
+
+### 17.7 Attack harness and simulator (P9)
+
+- **CLI attack modes** (`cli_worker/attacks.py`): `subtle`, `scale`, `bias`, `noise`, `sign_flip`, `zero`, `random`, `replay`, `lazy`; schedules `--attack-after N` (sleeper) and `--attack-prob q` (intermittent). Every attack is **structurally valid** (right shapes, finite, counts add up, non-negative second moments), so only verification can catch it. The worker keeps its own ground-truth `AttackLog`; the backend never sees it. The browser worker has an owner-controlled *Demo: misbehave* switch on the worker console (same perturbations) for the live presentation.
+- **Population simulator** (`trust/simulator.py`, `POST /trust/simulate`, `/simulator`): runs the real PWAV functions over synthetic devices and compares `none` / fixed-rate / adaptive on the same population. It models device *behaviour* only and does not include the reference check, forensics or retroactive audits; results are labelled as simulation.
+
+### 17.8 Limits (honest)
+
+- A corruption smaller than the tolerance is not detectable (and by design harmless: ≤ 1e-8 relative for GNB, 1e-6 Ridge, 1e-4 CNN gradients).
+- With a floor of 5 %, an *unaudited* cheat is merged until a later audit (or the reference check) exposes it. For CSV tasks the reference check + forensics repair the final result; for CNN training merged rounds cannot be undone (flagged in `integrity_flags`), and only sampled rounds get the centralized gradient check.
+- The e-detector's false-accusation bound is conditional on the tolerance limit being valid (probability ≥ γ) and on honest exceedance probability ≤ q0; the 10× margin makes the real honest exceedance rate far lower.
+- Rate limiting is in memory (per backend instance); a restart resets it. Lockout state is in MongoDB.
+- Credits are not money; there is no payment, token or blockchain.
+- The browser "misbehave" switch ships in the production worker for demonstration; a malicious owner could always modify his own device, which is exactly the threat model verification addresses.
+
+### 17.9 Insertion points — as implemented
+
+| Insertion point | Part 1 | Part 2 (implemented) |
+|---|---|---|
+| `VerificationHook` in result intake | `accepted_unverified` | `verify_result` (async): audit decision, recomputation, trust update, `rejected_verification` |
+| `partial_results.acceptance` | `accepted_unverified`, `rejected_structural` | + `verified`, `rejected_verification`, `rejected_forensic`, `rejected_retroactive` |
+| `kernel.compare` | reference check | discrepancy statistic for audits and forensics |
+| `runtime` fingerprint / kind | recorded | defines the calibration class |
+| `DeviceEligibilityPolicy` | allow all | `devices.quarantined` rule inside `ineligibility_reasons` |
+| `devices.stats`, `events` | counters, log | + `device_trust`, `verification_records`, `calibrations`, `security_events` |
+| CLI fault flags | reliability tests | `--attack*` modes + ground-truth log |
+| `assignments.work_units` + acceptance | recorded | reward entries and events |
+| `assignments.purpose` (`replica`/`audit`), `chunks.role` (`challenge`) | reserved | **unused** — audits are backend recomputations |
 
 ---
 
@@ -988,3 +1052,7 @@ Important property of the chosen workloads: the backend can **recompute any sing
 | D9 | JSON results, no pickle intake | Pickled partials | Never |
 | D10 | OpenAPI-generated TS types | Hand-written types | — |
 | D11 | Stateless synchronous data-parallel rounds for the image CNN (gradient sums; datasets stay on the backend) | Shipping shards to phones; federated averaging of local weights (not equal to centralized); PyTorch/TF in the browser | Larger models need cached shards or hierarchical aggregation |
+| D12 | Audit = backend recomputation; no replica/challenge assignments | Duplicate execution on a second device (collusion-prone, 2x cost); hidden known-answer chunks | Workloads too expensive to recompute on the backend |
+| D13 | Shiryaev–Roberts e-detector with block-wise thresholds `N²/α_m` for lifetime false-accusation control | Plain product e-process (sleeper agents hide behind history); power-of-two restarts (failed the sleeper test) | A tighter provable bound is needed |
+| D14 | Reward ledger = mutable entries + append-only events, conditional transitions, replay check | Single balance counter | Real payments are introduced |
+| D15 | Part 2 integrated before the M3 gate at the owner's request | Wait for M3 (original rule) | — |

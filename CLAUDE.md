@@ -17,8 +17,8 @@ device registers → capabilities known → user submits task → task validated
                                                         └─(Part 2) verification → trust/reputation → malicious-node handling → reward
 ```
 
-- **Part 1 — Compute Fabric:** "Can ProofNet actually distribute and complete an AI computation?" ← **current focus (MVP)**
-- **Part 2 — Trust, Verification & Security:** "Can ProofNet tell whether devices behaved correctly and reward trustworthy work?" Based on the team's research *Evidence-Adaptive Auditing of Untrusted AI Compute Nodes with Lifetime False-Accusation Control*, proposing **PWAV** (per-class order-statistic tolerance limits, betting/e-process evidence, adaptive audit probability, minimum audit floor, persistent suspicion memory).
+- **Part 1 — Compute Fabric:** "Can ProofNet actually distribute and complete an AI computation?" (MVP; implemented, real-phone gates still pending)
+- **Part 2 — Trust, Verification & Security:** "Can ProofNet tell whether devices behaved correctly and reward trustworthy work?" Based on the team's research *Evidence-Adaptive Auditing of Untrusted AI Compute Nodes with Lifetime False-Accusation Control*, proposing **PWAV** (per-class order-statistic tolerance limits, betting/e-process evidence, adaptive audit probability, minimum audit floor, persistent suspicion memory). **Implemented 2026-10-08 (P8–P11, `ARCHITECTURE.md` §17)** from this mechanism summary, not from the paper itself.
 
 Evolution: working compute → reliable multi-device compute → verification → attack testing → trust/reputation → PWAV → rewards → larger network.
 
@@ -39,9 +39,9 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 3. **P4 ★ M1 — one device end-to-end.** Do not start multi-device work before this passes on a real phone.
 4. P5 ★ M2 — two+ devices, device-aware split.
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
-6. Part 2 only after M3 (offline research may run in parallel).
+6. Part 2 only after M3 (offline research may run in parallel). **Overridden by the owner on 2026-10-08: Part 2 (P8–P11) was built and tested before M3. Part 1's real-phone gates (P6 scenarios, P6b CNN run, M3 five demos) remain open.**
 
-Current phase: **P6 / P6b** — P0–P5 completed (M1, M2 passed 2026-10-07). P6 (reliability) implemented and verified automatically; its phone scenarios are pending. **P6b (image CNN workload, added 2026-10-08) implemented and verified automatically and in headless Chromium with two Pyodide workers (Fashion-MNIST subset: 40 rounds in 84 s, batch split 67.2%/32.8% by measured benchmark, centralized gradient check PASSED at 1.35e-6); real-phone gate pending.** Update this line as phases complete.
+Current phase: **P6 / P6b** — P0–P5 completed (M1, M2 passed 2026-10-07). P6 (reliability) implemented and verified automatically; its phone scenarios are pending. **P6b (image CNN workload, added 2026-10-08) implemented and verified automatically and in headless Chromium with two Pyodide workers (Fashion-MNIST subset: 40 rounds in 84 s, batch split 67.2%/32.8% by measured benchmark, centralized gradient check PASSED at 1.35e-6); real-phone gate pending.** **Part 2 (P8–P11) implemented and verified automatically 2026-10-08:** audit by backend recomputation, PWAV trust/quarantine, forensics, reward ledger with clawback and replay check, security hardening, attack harness + simulator, dashboards `/trust` `/rewards` `/security` `/simulator`. Update this line as phases complete.
 
 ---
 
@@ -94,7 +94,7 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 5. Never execute the distributed workload in Vercel or in the backend (the backend only merges, finalizes and runs the small reference check).
 6. Never fake progress, timings or device activity. If something is aggregator-side (holdout metrics), label it.
 
-**Honest limitations (state them in UI/report):** results are unverified until Part 2; contributors see their partition's raw data; Sybil/collusion not handled; this is a research prototype, not production-grade secure remote execution.
+**Honest limitations (state them in UI/report):** results are audited probabilistically (floor 5 %), not all verified; corruptions below the tolerance are undetectable; unaudited cheats on merged CNN rounds cannot be undone (flagged); contributors see their partition's raw data; Sybil resistance is limited to inherited suspicion per account; this is a research prototype, not production-grade secure remote execution.
 
 ---
 
@@ -126,13 +126,15 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 
 **Also in scope (added in P6b, 2026-10-08):** one deep-learning workload, `cnn_image_train@1` — a small ProofNet-authored NumPy CNN trained by synchronous data-parallel SGD over image mini-batches, with its own upload/validate/monitor flow. The CSV workloads are unchanged.
 
-**Explicitly out of scope:** user Python code; arbitrary ML frameworks, or deep learning beyond the single catalog CNN kernel (no PyTorch/TensorFlow, no custom architectures from users); blockchain, tokens, cryptocurrency; consensus protocols; trust scores, reputation, PWAV, rewards (Part 2); Kubernetes, Docker Compose stacks, microservices, message queues; LLM-based task parsing; GPU workers; production-grade security; categorical feature encoding.
+**Also in scope (Part 2, 2026-10-08):** verification by backend recomputation, PWAV trust and quarantine, non-monetary reward credits with clawback, attack harness and population simulator, security hardening and their dashboards.
+
+**Explicitly out of scope:** user Python code; arbitrary ML frameworks, or deep learning beyond the single catalog CNN kernel (no PyTorch/TensorFlow, no custom architectures from users); blockchain, tokens, cryptocurrency, real money; consensus protocols; Kubernetes, Docker Compose stacks, microservices, message queues; LLM-based task parsing; GPU workers; production-grade security; categorical feature encoding.
 
 ---
 
-## 10. Future extension points (do not implement in Part 1, do not block)
+## 10. Extension points (Part 2 used them; future work may still use them)
 
-`assignments.purpose`, `chunks.role` (`challenge`), `partial_results.acceptance`, `tasks.verification_policy`, `VerificationHook`, `AssignmentPolicy`, `DeviceEligibilityPolicy`, `kernel.compare()`, per-assignment `runtime_fingerprint` (defines PWAV "class"), `devices.stats`, append-only `events`, CLI-worker fault injection (→ attack harness). Future collections: `verification_records`, `challenges`, `trust_profiles`, `reputation_events`, `attack_events`, `reward_records`.
+`assignments.purpose`, `chunks.role` (`challenge`), `partial_results.acceptance`, `tasks.verification_policy`, `VerificationHook`, `AssignmentPolicy`, `DeviceEligibilityPolicy`, `kernel.compare()`, per-assignment `runtime_fingerprint` (defines PWAV "class"), `devices.stats`, append-only `events`, CLI-worker fault injection (→ attack harness). Part 2 collections (now present): `verification_records`, `device_trust`, `calibrations`, `reward_entries`, `reward_events`, `security_events`, `login_attempts`. Not built (not needed): `challenges`, `attack_events`, `reputation_events`; `assignments.purpose` `replica/audit` and `chunks.role` `challenge` remain reserved.
 
 ---
 
@@ -160,3 +162,4 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 | Pyodide first load on phone (Wi-Fi / mobile data) | Real phones, Chrome, Wi-Fi, cold cache: OPPO F31 Pro+ 5G runtime ready in 11.4 s; vivo Y22 in 26.2 s. Mobile-data and cached-reload numbers still to record. Desktop Chromium reference: ≈ 3.4 s. | 2026-10-07 |
 | Benchmark score range (phones) | Re-benchmarks vary between sessions (OPPO 25.7 → 33.8 M cells/s, vivo 12.1 → 12.7), as the plan expects (scores re-measured every session). First run: OPPO F31 Pro+ 5G: 25.72 M cells/s (bench_v1 330 ms); vivo Y22: 12.07 M cells/s (577 ms). Desktop references: CPython ≈ 3.9–5.4e7; Pyodide in Node ≈ 1.9e7; Pyodide in desktop Chromium ≈ 6.5–7.8e7. Screen wake lock `active` on both phones. | 2026-10-07 |
 | Max observed Pyodide vs CPython discrepancy per kernel | gaussian_nb: 0.0 (exact); linear_ridge: 7.0e-15 normwise relative (Pyodide 314.0.7 / NumPy 2.4.6 under Node vs CPython 3.12 / NumPy 2.4.6; tolerances 1e-8 / 1e-6). Pyodide-in-Node bench_v1 ≈ 1.85e7 cells/s (desktop reference, not a phone). | 2026-10-07 |
+| Part 2 results (P8–P11) | 2026-10-08, automated: every attack mode (subtle 1e-4, scale, bias, noise, sign_flip, zero, random, lazy, replay) rejected by recomputation and the task still completes with a passing reference check (GNB/Ridge and CNN); persistent cheater quarantined after ≈ 6 audits at α = 0.2 (≈ 12 at α = 1e-3); unaudited cheat found by the reference check, culprit quarantined, chunk re-run, final model correct; simulator (30 honest + 6 always-cheating, 400 rounds): adaptive audit cost 13.7 % vs 30.7 % for a fixed 30 % rate, 6/6 attackers caught, 0 false accusations, 2.3 % of corrupt results merged vs 71 % for fixed and 100 % for no audits. Real-phone Part 2 demo not yet run. | 2026-10-08 |

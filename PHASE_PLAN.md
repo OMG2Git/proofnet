@@ -37,10 +37,10 @@ flowchart LR
 | P6 | MVP reliability & failure handling | Must work now | M | Level 7 |
 | **P6b** | **Image CNN workload (iterative, data-parallel)** | Must work now (added 2026-10-08) | M | Levels 3–6 for images |
 | **P7** | **★ M3 — demo hardening & MVP freeze** | **Must work now** | S–M | Level 8 |
-| P8 | Verification foundation | Research / Part 2 | M | — |
-| P9 | Attack simulation | Research / Part 2 | M | — |
-| P10 | Trust, reputation & PWAV | Research / Part 2 | L | — |
-| P11 | Contribution validation & rewards | Research / Part 2 | M | — |
+| P8 | Verification foundation | Part 2 — done 2026-10-08 | M | Levels 3, 7 |
+| P9 | Attack simulation | Part 2 — done 2026-10-08 | M | Level 7 |
+| P10 | Trust, reputation & PWAV | Part 2 — done 2026-10-08 | L | Levels 1, 7 |
+| P11 | Contribution validation & rewards | Part 2 — done 2026-10-08 | M | Level 7 |
 | — | Scale-out enhancements (§13) | Future enhancement | — | — |
 
 Sizes are relative effort (S < M < L) for a team of three, not calendar dates. Fix your own dates against your college calendar, with **M2 well before the first major review** and slack before M3.
@@ -380,34 +380,35 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Status (prep done 2026-10-08, gate pending):** built ahead of the gates because they need no phones — `POST /admin/demo/reset` (admin accounts via `ADMIN_EMAILS`; keeps users and devices), Settings page with runtime API-URL switch, connection test and pre-warm (needs no login), `/network` big-screen mode, `/limitations` page, `DEMO_RUNBOOK.md` (checklists, demo order, recovery, tunnel fallback), automatic storage guard. Still to do for M3: five consecutive real-phone demos on the deployed system, the fallback rehearsal (< 2 min), recorded video, tag `mvp-1.0`.
 
-**Gate to Part 2.** M3 passes. Part 2 integration work on the main branch starts only now.
+**Gate to Part 2.** M3 passes. *(Overridden by the owner on 2026-10-08: Part 2 was built before M3; see §11.)*
 
 ---
 
-## 11. Part 2 — Research phases (P8–P11)
+## 11. Part 2 — Verification, trust, rewards, security (P8–P11)
 
-Part 2 builds on the insertion points in ARCHITECTURE §17. **Research can start early offline** (after P1) using simulated workers and recorded partial results; **integration into the main system starts only after M3**. If one team of three owns Part 2, its early work is: PWAV simulation, honest-discrepancy calibration from P1/P4 data, and attack-model definitions.
+> **Status 2026-10-08: implemented and tested, ahead of the M3 gate.** The owner explicitly asked to start Part 2 before M3 ("Part 2 only after M3" was overridden; recorded as D15). Part 1's remaining gates (real-phone CNN run, P6 phone scenarios, M3 five-run rehearsal) are still open and are the owner's to run. Design and math: `ARCHITECTURE.md` §17. Note: PWAV was implemented from the mechanism summary in `CLAUDE.md`, not from the paper (not available), with its guarantees proved for this implementation.
 
-### P8 — Verification foundation
-- **Objective:** results can be checked, not just accepted.
-- **Work:** `verification_records` collection; `AssignmentPolicy` that creates `replica` assignments for a configurable fraction of chunks; backend recomputation audits; hidden `challenge` chunks with known answers; `Verifier` using `kernel.compare()` with tolerance; `acceptance` states `verified / disputed / rejected_verification`; aggregation option "wait for verification".
-- **Calibration:** collect honest replica discrepancies per class (kernel × version × runtime kind) → empirical distribution.
-- **Acceptance:** honest runs produce zero false rejections across ≥ 200 audited chunks; injected corrupt results are rejected.
+### P8 — Verification foundation — DONE
+- Async verifier in result intake (`verification/verifier.py`), audit by backend recomputation for all three kernels, HMAC audit draw, per-task `verification` mode (`adaptive` default / `full` / `off`), acceptance states, generic `422 INVALID_RESULT` to the worker, `verification_records`, per-class `calibrations`, tolerance rule, forensics after a failed reference check, retroactive audit on quarantine.
+- **Differs from the original plan:** no replica assignments or hidden challenge chunks (recomputation is exact ground truth and collusion-immune; D12).
+- **Acceptance:** honest devices pass every audit across all integration tests (0 false rejections; `tests/test_verification.py`, 3 kernels); every injected attack mode is rejected and the task still completes with a passing reference check.
 
-### P9 — Attack simulation
-- **Objective:** reproducible malicious behaviour to evaluate defences.
-- **Work:** extend CLI fault-injection into attack modes — random output, scaled statistics, lazy (compute on subset and extrapolate), label-flipping, intermittent cheating (cheat with probability q), colluding replicas returning identical wrong answers; `attack_events` ground-truth log; experiment runner producing detection metrics.
-- **Acceptance:** each mode is detected (or its non-detection explained) with measured detection rate and latency.
+### P9 — Attack simulation — DONE
+- CLI attack modes `subtle, scale, bias, noise, sign_flip, zero, random, replay, lazy` with `--attack-after` (sleeper) and `--attack-prob` (intermittent); all structurally valid; worker-side ground-truth `AttackLog`; browser *Demo: misbehave* switch; population simulator (`POST /trust/simulate`, `/simulator`) comparing `none` / fixed-rate / adaptive.
+- **Differs:** colluding replicas are not simulated because audits never use replicas (collusion cannot help an attacker against recomputation); label-flipping is covered by `sign_flip`/`random` on statistics (the workloads send statistics, not labels).
+- **Acceptance:** each mode is detected in the integration tests (`test_attack_is_rejected_and_the_task_still_succeeds[*]`, replay test, CNN poisoning test); simulator reports detection delay and corrupt-merged fraction for always-on, sleeper and intermittent attackers (`tests/test_simulator.py`).
 
-### P10 — Trust, reputation & PWAV
-- **Objective:** implement Evidence-Adaptive Auditing (PWAV) on top of P8/P9.
-- **Work:** per-class order-statistic tolerance limits from calibration data; per-device betting/e-process evidence updated on each audit; adaptive audit probability with a minimum audit floor; persistent suspicion memory across sessions (`trust_profiles`, `reputation_events`); `DeviceEligibilityPolicy` and scheduling weights consume trust.
-- **Acceptance:** measured lifetime false-accusation rate for honest nodes stays within the configured bound over long simulated runs; detection of attack modes from P9; audit cost decreases for consistently honest nodes.
+### P10 — Trust, reputation & PWAV — DONE
+- `trust/pwav.py` (tolerance limits, SR e-detector with lifetime false-accusation bound, adaptive audit probability with floor, persistent suspicion memory, trust score, reward multiplier), `device_trust` profiles and state machine, quarantine / reinstatement, Sybil memory inheritance, eligibility rule, `/trust` dashboard (evidence vs threshold, audit probability, calibration, records), live trust badge on `/network`.
+- **Differs:** trust does not (yet) change the planner's row shares — it changes audit probability, eligibility (quarantine) and rewards; weighting shares by trust was left out to keep the proven proportional planner unchanged.
+- **Acceptance:** `tests/test_pwav.py` (17 tests: coverage Monte Carlo of the tolerance limit, boundary false-accusation rate ≤ α, sleeper test over histories up to 20 000, never below the floor) and `tests/test_simulator.py` (0 false accusations; audit cost falls for honest populations; adaptive costs less than half of a fixed 30 % rate with the same detection).
 
-### P11 — Contribution validation & rewards
-- **Objective:** credit trustworthy work.
-- **Work:** `reward_records`; reward = verified work units (cells) × trust adjustment; contributor dashboard of earned credits; audit trail. Non-monetary credits only — no tokens or blockchain.
-- **Acceptance:** rewards reproducible from the event log; cheating devices earn nothing for rejected work.
+### P11 — Contribution validation & rewards — DONE
+- Reward ledger (entries + append-only events), trust-weighted amount, confirmation on audit or on task completion, clawback on quarantine / forensic failure, replay check, `/rewards` dashboard with leaderboard.
+- **Acceptance:** rewards reproducible from the event log (`test_ledger_replay_equals_the_balances`, `/rewards/ledger/check`); cheating devices earn nothing for rejected work.
+
+### Security hardening — DONE
+Login lockout, rate limits, device cap, security headers, foreign-assignment and conflicting-resubmission detection, `security_events`, `/security` dashboard (`tests/test_security.py`).
 
 ---
 
