@@ -23,7 +23,8 @@ BASE: dict[str, Any] = {
 
 
 def run(**over: Any) -> dict[str, Any]:
-    return simulate(**{**BASE, **over})["summary"]
+    summary: dict[str, Any] = simulate(**{**BASE, **over})["summary"]
+    return summary
 
 
 def test_adaptive_catches_every_always_cheating_device_within_a_few_audits() -> None:
