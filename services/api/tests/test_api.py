@@ -297,3 +297,55 @@ def test_ridge_task_creation(client: TestClient, user_headers: dict[str, str]) -
 
 def test_pickle_never_accepted_as_dataset(client: TestClient, user_headers: dict[str, str]) -> None:
     assert _upload(client, user_headers, pickle.dumps({"a": 1})).status_code == 422
+
+
+# ---------- admin demo reset ----------
+def test_admin_demo_reset_clears_work_data_but_keeps_users_and_devices() -> None:
+    """Own database: the reset wipes everything, so it must not share one with other tests."""
+    import secrets
+
+    admin_email = f"admin{secrets.token_hex(3)}@example.com"
+    base = Settings()
+    s = Settings(
+        mongodb_uri=base.mongodb_uri,
+        mongodb_db=f"proofnet_test_admin_{secrets.token_hex(4)}",
+        jwt_secret="test-secret-test-secret-test-secret-123",
+        status_cache_seconds=0,
+        reconciler_interval_seconds=3600,
+        admin_emails=admin_email,
+    )
+    mongo: Mongo = MongoClient(s.mongodb_uri, tz_aware=True)
+    try:
+        with TestClient(create_app(s)) as c:
+            boss = signup(c, admin_email)
+            other = signup(c)
+            assert c.get(f"{V1}/admin/me", headers=boss).json() == {"admin": True}
+            assert c.get(f"{V1}/admin/me", headers=other).json() == {"admin": False}
+            dev_id, _ = register_device(c, boss)
+            ds = _upload(c, boss, _csv()).json()
+            assert c.post(f"{V1}/tasks", headers=boss, json=_manifest(ds["id"])).status_code == 201
+            mdb = mongo[s.mongodb_db]
+            assert (
+                mdb["datasets"].count_documents({}) == 1 and mdb["tasks"].count_documents({}) == 1
+            )
+            assert c.post(f"{V1}/admin/demo/reset", headers=other).status_code == 403
+            assert c.post(f"{V1}/admin/demo/reset").status_code == 401
+            r = c.post(f"{V1}/admin/demo/reset", headers=boss)
+            assert r.status_code == 200 and r.json()["reset"] is True
+            assert r.json()["deleted"]["tasks"] == 1 and r.json()["deleted"]["files"] >= 2
+            for coll in (
+                "tasks",
+                "datasets",
+                "chunks",
+                "assignments",
+                "artifacts",
+                "partial_results",
+            ):
+                assert mdb[coll].count_documents({}) == 0, coll
+            assert mdb["fs.files"].count_documents({}) == 0
+            # accounts and devices survive: phones stay registered, the user can still log in
+            assert mdb["devices"].find_one({"_id": dev_id}) is not None
+            assert c.get(f"{V1}/auth/me", headers=boss).status_code == 200
+    finally:
+        mongo.drop_database(s.mongodb_db)
+        mongo.close()

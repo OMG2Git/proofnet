@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="change-me", min_length=8)
     cors_origins: str = "http://localhost:3000"
     max_upload_mb: int = 25
+    admin_emails: str = ""  # comma-separated; these accounts may call /admin/demo/reset
     # Free Atlas tier is 512 MB and blocks writes at the limit: release old data above this budget.
     storage_budget_mb: int = 380
     storage_check_seconds: int = 120

@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import reconciler
+from .admin.routes import router as admin_router
 from .auth.routes import router as auth_router
 from .config import Settings, get_settings
 from .contracts import ApiError
@@ -79,6 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         assignments_router,
         monitor_router,
         image_router,
+        admin_router,
     ):
         api.include_router(r)
 
