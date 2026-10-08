@@ -3,7 +3,22 @@
 import secrets
 import time
 
-PREFIXES = {"usr", "dev", "ds", "img", "tsk", "chk", "asg", "pr", "art", "evt", "ses"}
+PREFIXES = {
+    "usr",
+    "dev",
+    "ds",
+    "img",
+    "tsk",
+    "chk",
+    "asg",
+    "pr",
+    "art",
+    "evt",
+    "ses",
+    "vr",
+    "rwe",
+    "sec",
+}
 _ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"  # Crockford base32 (lowercase)
 
 

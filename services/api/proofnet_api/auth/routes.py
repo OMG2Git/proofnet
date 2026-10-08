@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pymongo.errors import DuplicateKeyError
 
 from ..contracts.api import LoginRequest, SignupRequest, TokenResponse, UserOut
@@ -6,6 +6,13 @@ from ..db import utcnow
 from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
 from ..ids import new_id
+from ..security.ratelimit import (
+    check_lockout,
+    client_ip,
+    enforce_auth_limit,
+    register_failure,
+    register_success,
+)
 from .security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -21,7 +28,10 @@ def _user_out(u: dict[str, object]) -> UserOut:
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=201)
-async def signup(body: SignupRequest, db: DbDep, settings: SettingsDep) -> TokenResponse:
+async def signup(
+    body: SignupRequest, request: Request, db: DbDep, settings: SettingsDep
+) -> TokenResponse:
+    await enforce_auth_limit(request, db, settings, "signup")
     user_id = new_id("usr")
     roles = ["user", "contributor"]
     user = {
@@ -43,10 +53,17 @@ async def signup(body: SignupRequest, db: DbDep, settings: SettingsDep) -> Token
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: DbDep, settings: SettingsDep) -> TokenResponse:
-    user = await db.col("users").find_one({"email": body.email.lower()})
+async def login(
+    body: LoginRequest, request: Request, db: DbDep, settings: SettingsDep
+) -> TokenResponse:
+    await enforce_auth_limit(request, db, settings, "login")
+    email = body.email.lower()
+    await check_lockout(db, email)
+    user = await db.col("users").find_one({"email": email})
     if user is None or not verify_password(body.password, user["password_hash"]):
+        await register_failure(db, settings, email, client_ip(request))
         raise ProofNetError(401, "INVALID_CREDENTIALS", "Wrong email or password")
+    await register_success(db, email)
     token = create_access_token(
         user["_id"], user["roles"], settings.jwt_secret, settings.jwt_ttl_minutes
     )

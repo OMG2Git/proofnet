@@ -8,6 +8,7 @@ from pathlib import Path
 
 import httpx
 
+from . import attacks
 from .worker import Faults, StateFile, Worker, login_or_signup
 
 
@@ -30,6 +31,9 @@ def main() -> None:
     f.add_argument("--corrupt-result", action="store_true", help="return wrong statistics")
     f.add_argument("--late-result-ms", type=int, default=0, help="hold the result back")
     f.add_argument("--fault-seed", type=int, default=None)
+    f.add_argument("--attack", default="none", choices=attacks.MODES, help="Part 2 attack mode")
+    f.add_argument("--attack-after", type=int, default=0, help="honest results before cheating")
+    f.add_argument("--attack-prob", type=float, default=1.0, help="probability of cheating")
     args = ap.parse_args()
     faults = Faults(
         fail_rate=args.fail_rate,
@@ -38,6 +42,9 @@ def main() -> None:
         corrupt_result=args.corrupt_result,
         late_result_ms=args.late_result_ms,
         seed=args.fault_seed,
+        attack=args.attack,
+        attack_after=args.attack_after,
+        attack_prob=args.attack_prob,
     )
     if not args.email or not args.password:
         ap.error("--email and --password (or PROOFNET_EMAIL / PROOFNET_PASSWORD) are required")

@@ -162,7 +162,9 @@ async def create_task(
         "status_history": [{"status": "queued", "at": now}],
         "result": None,
         "error": None,
-        "verification_policy": {"mode": "none"},
+        "verification_policy": {
+            "mode": manifest.verification or settings.verification_default_mode
+        },
         "created_at": now,
     }
     await db.col("tasks").insert_one(doc)

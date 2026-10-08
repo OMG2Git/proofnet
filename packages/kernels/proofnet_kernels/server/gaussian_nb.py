@@ -20,6 +20,7 @@ from .common import (
 from .params import GaussianNBParams
 
 PARAMS_MODEL = GaussianNBParams
+AUDIT_FLOOR = 1e-10  # smallest tolerance used by the trust system
 TOLERANCE = 1e-8  # normwise relative, distributed vs centralized
 
 

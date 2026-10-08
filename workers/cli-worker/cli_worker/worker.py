@@ -27,6 +27,8 @@ import numpy as np
 from proofnet_kernels.core import bench, cnn, gaussian_nb, linear_ridge
 from proofnet_kernels.core.serialize import payload_sha256
 
+from . import attacks
+
 log = logging.getLogger("cli_worker")
 BUNDLE_VERSION = "1"
 HOT_WINDOW_S = 5.0  # after finishing an assignment, poll fast: the next round is probably near
@@ -47,6 +49,10 @@ class Faults:
     corrupt_result: bool = False  # well-formed but wrong statistics (counts do not match)
     late_result_ms: int = 0  # hold the result back this long before posting it
     seed: int | None = None
+    # Part 2 attack modes (see attacks.py): structurally valid but wrong results
+    attack: str = "none"
+    attack_after: int = 0  # honest results first (sleeper agent)
+    attack_prob: float = 1.0  # probability of cheating on a given result
 
     def active(self) -> bool:
         return bool(
@@ -55,6 +61,7 @@ class Faults:
             or self.die_after_start
             or self.corrupt_result
             or self.late_result_ms
+            or self.attack != "none"
         )
 
 
@@ -133,6 +140,9 @@ class Worker:
         self.dead = False  # set by die_after_start: the worker has vanished
         self._hot_until = 0.0  # poll quickly for a few seconds after finishing work
         self._rng = random.Random(self.faults.seed)
+        self.results_done = 0
+        self.last_payload: dict[str, Any] | None = None
+        self.attack_log = attacks.AttackLog()  # ground truth, never sent anywhere
 
     # ---- auth helpers ----
     def _user(self) -> dict[str, str]:
@@ -279,16 +289,33 @@ class Worker:
             )
             if bad_shape:
                 raise WorkerError(f"unexpected input shape {x.shape}")
+            attacked = (
+                self.faults.attack != "none"
+                and self.results_done >= self.faults.attack_after
+                and self._rng.random() < self.faults.attack_prob
+            )
+            lazy = attacked and self.faults.attack == "lazy"
+            xc, yc = attacks.lazy_subsample(x, y) if lazy else (x, y)
             t1 = time.perf_counter()
             if a["kernel"] == "gaussian_nb_train":
-                payload = gaussian_nb.map(x, y, int(a["params"]["n_classes"]))
+                payload = gaussian_nb.map(xc, yc, int(a["params"]["n_classes"]))
             elif a["kernel"] == "linear_ridge_train":
-                payload = linear_ridge.map(x, y)
+                payload = linear_ridge.map(xc, yc)
             elif iterative and w is not None:
-                payload = cnn.map(x, y, w, a["params"]["arch"])
+                payload = cnn.map(xc, yc, w, a["params"]["arch"])
             else:
                 raise WorkerError(f"unknown kernel {a['kernel']}")
             compute_ms = (time.perf_counter() - t1) * 1000
+            honest = payload
+            if lazy:
+                payload = attacks.lazy_fix(a["kernel"], payload, a["n_rows"])
+            elif attacked:
+                payload = attacks.apply_attack(
+                    self.faults.attack, payload, self._rng, self.last_payload
+                )
+            self.last_payload = honest
+            self.attack_log.add(asg_id, attacked, self.faults.attack if attacked else "none")
+            self.results_done += 1
             if self.faults.corrupt_result:  # plausible-looking but wrong
                 if a["kernel"] == "gaussian_nb_train":
                     payload["classes"]["n"][0] += 7

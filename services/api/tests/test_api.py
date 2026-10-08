@@ -252,7 +252,7 @@ def test_create_task_prepares_npz_with_matching_sha(
     r = client.post(f"{V1}/tasks", headers=user_headers, json=_manifest(ds["id"]))
     assert r.status_code == 201, r.text
     t = r.json()
-    assert t["status"] == "queued" and t["verification_policy"] == {"mode": "none"}
+    assert t["status"] == "queued" and t["verification_policy"] == {"mode": "adaptive"}
     assert t["prepared"]["n_train"] + t["prepared"]["n_test"] == 500
     assert t["prepared"]["class_labels"] == [0, 1, 2]
     # the prepared .npz really exists in GridFS and its SHA-256 matches

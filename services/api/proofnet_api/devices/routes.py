@@ -1,14 +1,16 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from ..auth.security import hash_device_token
 from ..contracts.api import DeviceOut, DevicePatch, DeviceRegistered, DeviceRegisterRequest
 from ..db import Db, utcnow
-from ..deps import DbDep, UserDep
+from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id, new_token
+from ..security.quarantine import record_event
+from ..security.ratelimit import enforce_auth_limit
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -44,8 +46,18 @@ async def _owned(db: Db, device_id: str, user_id: str) -> dict[str, Any]:
 
 @router.post("", response_model=DeviceRegistered, status_code=201)
 async def register_device(
-    body: DeviceRegisterRequest, db: DbDep, user: UserDep
+    body: DeviceRegisterRequest, request: Request, db: DbDep, user: UserDep, settings: SettingsDep
 ) -> DeviceRegistered:
+    await enforce_auth_limit(request, db, settings, "register")
+    if await db.col("devices").count_documents({"owner_user_id": user["_id"]}) >= (
+        settings.max_devices_per_user
+    ):
+        await record_event(
+            db, "device_cap_reached", severity="warning", user_id=user["_id"], data={}
+        )
+        raise ProofNetError(
+            409, "DEVICE_LIMIT", f"At most {settings.max_devices_per_user} devices per account"
+        )
     token = new_token()
     doc = {
         "_id": new_id("dev"),

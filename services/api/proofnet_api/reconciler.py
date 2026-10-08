@@ -40,11 +40,11 @@ async def mark_offline_devices(db: Db, settings: Settings, now: datetime | None 
     return count
 
 
-async def resume_aggregations(db: Db) -> None:
+async def resume_aggregations(db: Db, settings: Settings | None = None) -> None:
     """Re-run aggregation that stalled (e.g. the backend restarted mid-aggregation)."""
     await release_stale_claims(db)
     async for t in db.col("tasks").find({"status": "aggregating", "aggregation_claimed_at": None}):
-        await aggregate_task(db, t["_id"])
+        await aggregate_task(db, t["_id"], settings)
 
 
 async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> None:
@@ -53,7 +53,7 @@ async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> N
     await expire_assignments(db, settings, now)  # deadlines, offline devices -> retry
     await expire_tasks(db, settings, now)  # queue and task timeouts
     await schedule_pass(db, settings)
-    await resume_aggregations(db)
+    await resume_aggregations(db, settings)
     await resume_training(db, settings)
 
 

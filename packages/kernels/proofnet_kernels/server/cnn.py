@@ -24,6 +24,7 @@ from .images import ImageSet
 
 TASK_TYPE = core.KERNEL
 GRADIENT_TOLERANCE = 1e-4  # normwise relative, float32 gradient sums (summation order differs)
+AUDIT_FLOOR = 1e-5  # smallest tolerance used by the trust system (float32 phone vs backend)
 MIN_ROWS_PER_DEVICE = 8
 
 

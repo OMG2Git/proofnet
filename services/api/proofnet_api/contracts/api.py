@@ -158,6 +158,8 @@ class NetworkDevice(BaseModel):
     status: str
     score_cells_per_sec: float | None = None
     runtime_kind: str | None = None
+    trust_status: str | None = None  # probation | trusted | watch | quarantined
+    trust: float | None = None
     last_seen_age_seconds: float | None = None
     current_assignment_id: str | None = None
     current_task_id: str | None = None

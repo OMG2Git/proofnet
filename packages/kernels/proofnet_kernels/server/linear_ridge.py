@@ -19,6 +19,7 @@ from .common import (
 from .params import LinearRidgeParams
 
 PARAMS_MODEL = LinearRidgeParams
+AUDIT_FLOOR = 1e-8  # smallest tolerance used by the trust system
 TOLERANCE = 1e-6  # normwise relative, distributed vs centralized
 
 

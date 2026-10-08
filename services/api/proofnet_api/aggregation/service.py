@@ -19,17 +19,20 @@ from proofnet_kernels.server.common import PreparedData
 from proofnet_kernels.server.params import GaussianNBParams, LinearRidgeParams
 from proofnet_kernels.server.registry import get_kernel
 
+from ..config import Settings, get_settings
 from ..db import Db, utcnow
 from ..events import emit
 from ..ids import new_id
+from ..rewards import ledger
 from ..tasks.prepared import load_task_images, load_task_prepared
-from ..verification import ACCEPTED_UNVERIFIED
+from ..verification import ACCEPTED, ACCEPTED_UNVERIFIED, VERIFIED, normalize_mode
 
 CLAIM_STALE_SECONDS = 120
 
 LIMITATIONS = [
-    "Results are unverified: a contributor could return well-formed but wrong statistics "
-    "(verification is Part 2).",
+    "Verification is probabilistic: each result is audited by backend recomputation with an "
+    "adaptive probability (always at least the audit floor); the merged result is additionally "
+    "checked end-to-end against a centralized recomputation.",
     "Contributors receive the raw rows of their partition; do not upload sensitive data.",
     "Holdout metrics are computed by the aggregator, not by contributor devices.",
     "Research prototype; not production-grade secure remote execution.",
@@ -38,6 +41,41 @@ LIMITATIONS = [
 
 class AggregationError(RuntimeError):
     pass
+
+
+def _acceptance_summary(partials: list[dict[str, Any]]) -> str:
+    n_ver = sum(1 for p in partials if p["acceptance"] == VERIFIED)
+    if n_ver == len(partials):
+        return "fully verified (every chunk audited by recomputation)"
+    return (
+        f"partially verified: {n_ver} of {len(partials)} chunks audited by recomputation; the "
+        "others rely on the end-to-end reference check"
+    )
+
+
+def _verification_summary(task: dict[str, Any], partials: list[dict[str, Any]]) -> dict[str, Any]:
+    mode = normalize_mode(task.get("verification_policy"))
+    return {
+        "mode": mode,
+        "chunks": len(partials),
+        "chunks_audited": sum(1 for p in partials if p["acceptance"] == VERIFIED),
+        "chunks_unaudited": sum(1 for p in partials if p["acceptance"] == ACCEPTED_UNVERIFIED),
+    }
+
+
+async def _cnn_verification_summary(db: Db, task: dict[str, Any]) -> dict[str, Any]:
+    recs = [
+        r
+        async for r in db.col("verification_records").find(
+            {"task_id": task["_id"]}, {"audited": 1, "decision": 1}
+        )
+    ]
+    return {
+        "mode": normalize_mode(task.get("verification_policy")),
+        "results": len(recs),
+        "audited": sum(1 for r in recs if r["audited"]),
+        "rejected": sum(1 for r in recs if r["decision"] != VERIFIED and r["audited"]),
+    }
 
 
 def check_coverage(chunks: list[dict[str, Any]], n_train: int) -> None:
@@ -86,7 +124,7 @@ def _compute(
     }
 
 
-async def aggregate_task(db: Db, task_id: str) -> bool:
+async def aggregate_task(db: Db, task_id: str, settings: Settings | None = None) -> bool:
     """Claim and run aggregation for a task in `aggregating`. Returns True if completed."""
     claim = await db.col("tasks").update_one(
         {"_id": task_id, "status": "aggregating", "aggregation_claimed_at": None},
@@ -97,7 +135,7 @@ async def aggregate_task(db: Db, task_id: str) -> bool:
     task = await db.col("tasks").find_one({"_id": task_id})
     assert task is not None
     try:
-        return await _aggregate(db, task)
+        return await _aggregate(db, task, settings or get_settings())
     except Exception as e:  # any failure is explicit and visible
         now = utcnow()
         res = await db.col("tasks").update_one(
@@ -240,7 +278,8 @@ async def _aggregate_cnn(db: Db, task: dict[str, Any]) -> bool:
             "python": sys.version.split()[0],
             "platform": platform.platform(),
         },
-        "acceptance": ACCEPTED_UNVERIFIED,
+        "acceptance": "per-round: see verification",
+        "verification": await _cnn_verification_summary(db, task),
         "limitations": LIMITATIONS
         + [
             "Contributors saw the training images of the mini-batches they computed on.",
@@ -275,6 +314,7 @@ async def _aggregate_cnn(db: Db, task: dict[str, Any]) -> bool:
         },
     )
     if res.modified_count:
+        await ledger.confirm_task(db, task_id)
         await emit(
             db,
             "task_completed",
@@ -284,7 +324,7 @@ async def _aggregate_cnn(db: Db, task: dict[str, Any]) -> bool:
     return bool(res.modified_count)
 
 
-async def _aggregate(db: Db, task: dict[str, Any]) -> bool:
+async def _aggregate(db: Db, task: dict[str, Any], settings: Settings) -> bool:
     task_id = task["_id"]
     if task.get("task_type") == "cnn_image_train":
         return await _aggregate_cnn(db, task)
@@ -296,7 +336,7 @@ async def _aggregate(db: Db, task: dict[str, Any]) -> bool:
     partials: list[dict[str, Any]] = []
     for c in chunks:
         pr = await db.col("partial_results").find_one(
-            {"assignment_id": c["accepted_assignment_id"], "acceptance": ACCEPTED_UNVERIFIED}
+            {"assignment_id": c["accepted_assignment_id"], "acceptance": {"$in": list(ACCEPTED)}}
         )
         if pr is None:
             raise AggregationError(f"no accepted partial result for chunk {c['index']}")
@@ -305,6 +345,12 @@ async def _aggregate(db: Db, task: dict[str, Any]) -> bool:
     prepared = await load_task_prepared(db, task)
     out = await asyncio.to_thread(_compute, task, prepared, [p["payload"] for p in partials])
     final, check = out["final"], out["check"]
+    if not check["within_tolerance"]:
+        # some unaudited chunk is wrong: find it, quarantine its device and re-run the chunk
+        from ..verification.forensics import heal_after_failed_check
+
+        if await heal_after_failed_check(db, settings, task, chunks, partials):
+            return False
 
     asgs = {
         a["_id"]: a
@@ -376,7 +422,8 @@ async def _aggregate(db: Db, task: dict[str, Any]) -> bool:
             "python": sys.version.split()[0],
             "platform": platform.platform(),
         },
-        "acceptance": ACCEPTED_UNVERIFIED,
+        "acceptance": _acceptance_summary(partials),
+        "verification": _verification_summary(task, partials),
         "limitations": LIMITATIONS,
         "generated_at": utcnow().isoformat(),
     }
@@ -428,6 +475,7 @@ async def _aggregate(db: Db, task: dict[str, Any]) -> bool:
         },
     )
     if res.modified_count:
+        await ledger.confirm_task(db, task_id)
         await emit(
             db,
             "task_completed",

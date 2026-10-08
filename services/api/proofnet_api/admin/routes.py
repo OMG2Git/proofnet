@@ -1,4 +1,5 @@
-"""Admin: demo reset (ARCHITECTURE 13). Clears work data, keeps users and devices."""
+"""Admin: demo reset (ARCHITECTURE 13). Clears work data (tasks, results, verification records,
+rewards), keeps users, devices, trust profiles (incl. quarantine), calibrations and security events."""
 
 from typing import Annotated, Any
 
@@ -24,6 +25,9 @@ WORK_COLLECTIONS = (
     "image_datasets",
     "model_states",
     "training_rounds",
+    "verification_records",
+    "reward_entries",
+    "reward_events",
 )
 
 

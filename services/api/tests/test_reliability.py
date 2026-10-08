@@ -103,7 +103,7 @@ def test_corrupt_payload_is_rejected_retried_elsewhere_and_counted(fast_env: Env
     dev = mongo[s.mongodb_db]["devices"].find_one({"_id": a.device_id})
     assert dev is not None and dev["stats"]["invalid_results"] == 1
     prs = list(mongo[s.mongodb_db]["partial_results"].find({"task_id": tid}))
-    assert sorted(p["acceptance"] for p in prs) == ["accepted_unverified", "rejected_structural"]
+    assert sorted(p["acceptance"] for p in prs) == ["rejected_structural", "verified"]
     assert any("was rejected" in m for m in messages(fast_env, h, tid))
     assert st["task"]["result"]["reference_check"]["passed"] is True  # the bad data never merged
 

@@ -71,6 +71,8 @@ def ineligibility_reasons(
     need, have = mem_estimate_bytes(rows, n_features), mem_budget_bytes(device)  # 5
     if need > have:
         reasons.append(f"needs ~{need // 2**20} MB, device budget {have // 2**20} MB")
+    if device.get("quarantined"):  # Part 2: failed verification, no new work until reinstated
+        reasons.append("quarantined after failed verification")
     if device["_id"] in (excluded_device_ids or []):  # 6
         reasons.append("already failed this chunk")
     if not (policy or AllowAll()).allows(device, task or {}):  # 7

@@ -18,6 +18,24 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     max_upload_mb: int = 25
     admin_emails: str = ""  # comma-separated; these accounts may call /admin/demo/reset
+    # --- Part 2: verification / trust (ARCHITECTURE 17) ---
+    verification_default_mode: str = "adaptive"  # off | adaptive | full
+    pwav_q0: float = 0.03  # honest exceedance probability (tolerance limit covers p = 1 - q0)
+    pwav_gamma: float = 0.95  # confidence of the tolerance limit
+    pwav_alpha: float = 1e-3  # lifetime false-accusation budget per device
+    pwav_margin: float = 10.0  # safety factor on the calibrated tolerance limit
+    calibration_cap: int = 5000  # honest discrepancy samples kept per class
+    audit_floor: float = 0.05  # minimum audit probability, always
+    audit_initial: float = 0.30
+    audit_probation_results: int = 5  # a new device is audited on every one of its first results
+    audit_tau: float = 10.0
+    audit_memory_decay: float = 0.98
+    rate_limit_auth_per_minute: int = 60  # sign-up / sign-in / device registration per address
+    max_devices_per_user: int = 25
+    login_max_failures: int = 5  # consecutive wrong passwords before the account locks
+    login_lockout_seconds: int = 300
+    reward_rate: float = 1.0  # credits per million work units at full trust
+    reward_base: float = 0.5  # reward multiplier of an unproven device (1.0 = fully trusted)
     # Free Atlas tier is 512 MB and blocks writes at the limit: release old data above this budget.
     storage_budget_mb: int = 380
     storage_check_seconds: int = 120

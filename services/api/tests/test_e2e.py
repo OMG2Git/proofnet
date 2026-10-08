@@ -62,7 +62,7 @@ def test_gaussian_nb_one_device_end_to_end(env: Env) -> None:
     assert asg["purpose"] == "primary" and asg["timings"]["compute_ms"] >= 0
     assert asg["runtime_fingerprint"]["kind"] == "cpython"
     pr = mongo[s.mongodb_db]["partial_results"].find_one({"assignment_id": asg["id"]})
-    assert pr is not None and pr["acceptance"] == "accepted_unverified"
+    assert pr is not None and pr["acceptance"] == "verified"
 
     # artifacts + reference check
     kinds = {a["kind"] for a in st["artifacts"]}
@@ -91,7 +91,10 @@ def test_gaussian_nb_one_device_end_to_end(env: Env) -> None:
     contrib = rep["contributions"][0]
     assert contrib["device_name"] == "cli-e2e" and contrib["timings_ms"]["compute_ms"] >= 0
     assert contrib["runtime_fingerprint"]["numpy"] and rep["reference_check"]["passed"]
-    assert any("unverified" in x for x in rep["limitations"])
+    assert any("Verification is probabilistic" in x for x in rep["limitations"])
+    assert rep["verification"]["chunks_audited"] == 1 and rep["acceptance"].startswith(
+        "fully verified"
+    )
     assert rep["metrics"]["computed_by"].startswith("aggregator")
 
     # owner only

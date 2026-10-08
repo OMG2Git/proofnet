@@ -400,7 +400,10 @@ async def _close_round(
     asgs: list[dict[str, Any]] = []
     for c in chunks:
         pr = await db.col("partial_results").find_one(
-            {"assignment_id": c["accepted_assignment_id"], "acceptance": "accepted_unverified"}
+            {
+                "assignment_id": c["accepted_assignment_id"],
+                "acceptance": {"$in": ["verified", "accepted_unverified"]},
+            }
         )
         asg = await db.col("assignments").find_one({"_id": c["accepted_assignment_id"]})
         if pr is None or asg is None:
@@ -473,7 +476,7 @@ async def _close_round(
         if res.modified_count:
             await emit(db, "task_aggregating", task_id=task_id)
             await _cleanup_states(db, task_id, keep=r + 1)
-            await aggregate_task(db, task_id)
+            await aggregate_task(db, task_id, settings)
         return
     probe = {**task, "training": {**tr, "round": r + 1}}
     await db.col("chunks").delete_many({"task_id": task_id, "round": r + 1, "status": "created"})

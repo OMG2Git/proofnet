@@ -21,10 +21,14 @@ from ..deps import DbDep, DeviceDep, SettingsDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from ..rewards import ledger
 from ..scheduling.lifecycle import free_device, release_attempt
+from ..security.quarantine import record_event
 from ..tasks.prepared import load_task_prepared
 from ..training import service as training
-from ..verification import DEFAULT_HOOK
+from ..trust import store as trust_store
+from ..verification import REJECTED_VERIFICATION
+from ..verification.verifier import verify_result
 
 router = APIRouter(prefix="/worker/assignments", tags=["worker"])
 
@@ -69,6 +73,15 @@ async def _own_assignment(db: Db, assignment_id: str, device: dict[str, Any]) ->
     asg = await db.col("assignments").find_one({"_id": assignment_id})
     # Workers can only access their own assignments: unknown and foreign look identical.
     if asg is None or asg["device_id"] != device["_id"]:
+        if asg is not None:  # a real assignment of someone else: probing / replay of a stolen id
+            await record_event(
+                db,
+                "foreign_assignment_access",
+                severity="warning",
+                user_id=device["owner_user_id"],
+                device_id=device["_id"],
+                data={"assignment_id": assignment_id},
+            )
         raise ProofNetError(404, "NOT_FOUND", "Assignment not found")
     return asg
 
@@ -158,6 +171,16 @@ async def submit_result(
     asg = await _own_assignment(db, assignment_id, device)
     if asg["status"] == "succeeded":  # duplicate submission: no state change, no double count
         pr = await db.col("partial_results").find_one({"assignment_id": assignment_id})
+        if pr is not None and pr["payload_sha256"] != body.payload_sha256:
+            await record_event(
+                db,
+                "conflicting_resubmission",
+                severity="critical",
+                user_id=device["owner_user_id"],
+                device_id=device["_id"],
+                task_id=asg["task_id"],
+                data={"assignment_id": assignment_id},
+            )
         return ResultAck(
             assignment_id=assignment_id,
             status="succeeded",
@@ -209,6 +232,7 @@ async def submit_result(
         "kernel_version": body.kernel_version,
         "payload": body.payload,
         "payload_sha256": body.payload_sha256,
+        "class_key": trust_store.class_key(task, device),
         "structural": {"ok": not errors, "errors": errors},
         "acceptance": "rejected_structural" if errors else "pending",
         "received_at": utcnow(),
@@ -229,6 +253,30 @@ async def submit_result(
         _kick(request, settings)
         raise ProofNetError(422, "INVALID_RESULT", "Result rejected", errors)
 
+    # Part 2: audit by backend recomputation (adaptive probability) before the result counts
+    decision = await verify_result(db, settings, task, chunk, asg, device, body.payload)
+    if decision.acceptance == REJECTED_VERIFICATION:
+        await db.col("partial_results").update_one(
+            {"_id": pr_id},
+            {
+                "$set": {
+                    "acceptance": REJECTED_VERIFICATION,
+                    "verification_record_id": decision.record_id,
+                }
+            },
+        )
+        await release_attempt(
+            db,
+            asg,
+            chunk,
+            "rejected",
+            {"code": "VERIFICATION_FAILED", "message": "result failed verification"},
+            ["running"],
+            device_stat="invalid_results",
+        )
+        _kick(request, settings)
+        raise ProofNetError(422, "INVALID_RESULT", "Result rejected", ["result rejected"])
+
     now = utcnow()
     won = await db.col("assignments").update_one(
         {"_id": assignment_id, "status": "running"},
@@ -246,8 +294,11 @@ async def submit_result(
         await db.col("partial_results").delete_one({"_id": pr_id})
         raise ProofNetError(409, "LATE_RESULT", "Assignment is no longer running")
 
-    acceptance = DEFAULT_HOOK.on_partial(task, chunk, body.payload)  # Part 2 insertion point
-    await db.col("partial_results").update_one({"_id": pr_id}, {"$set": {"acceptance": acceptance}})
+    acceptance = decision.acceptance
+    await db.col("partial_results").update_one(
+        {"_id": pr_id},
+        {"$set": {"acceptance": acceptance, "verification_record_id": decision.record_id}},
+    )
     await db.col("chunks").update_one(
         {"_id": chunk["_id"], "status": "assigned"},
         {"$set": {"status": "completed", "accepted_assignment_id": assignment_id}},
@@ -257,6 +308,15 @@ async def submit_result(
         {"$inc": {"stats.cells_processed": chunk["work_units"]}},
     )
     await free_device(db, device["_id"], assignment_id, stat="succeeded")
+    await ledger.accrue(
+        db,
+        settings,
+        task=task,
+        chunk=chunk,
+        assignment_id=assignment_id,
+        device=device,
+        acceptance=acceptance,
+    )
     await emit(
         db,
         "result_accepted",
@@ -284,7 +344,7 @@ async def submit_result(
         )
         if t.modified_count:
             await emit(db, "task_aggregating", task_id=task["_id"])
-            _spawn(request, aggregate_task(db, task["_id"]))
+            _spawn(request, aggregate_task(db, task["_id"], settings))
     _kick(request, settings)
     return ResultAck(assignment_id=assignment_id, status="succeeded", acceptance=acceptance)
 

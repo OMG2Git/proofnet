@@ -6,6 +6,7 @@ from .. import cache
 from ..contracts.api import NetworkDevice, NetworkSummary
 from ..db import utcnow
 from ..deps import DbDep, SettingsDep, UserDep
+from ..trust.store import trust_of
 
 router = APIRouter(prefix="/network", tags=["network"])
 
@@ -34,6 +35,10 @@ async def network_summary(
         t["_id"]: t
         async for t in db.col("tasks").find({"_id": {"$in": [a["task_id"] for a in asgs.values()]}})
     }
+    profiles = {
+        p["_id"]: p
+        async for p in db.col("device_trust").find({"_id": {"$in": [d["_id"] for d in docs]}})
+    }
     devices: list[NetworkDevice] = []
     counts = dict.fromkeys(STATUSES, 0)
     for d in docs:
@@ -50,6 +55,8 @@ async def network_summary(
                 status=d["status"],
                 score_cells_per_sec=(d.get("benchmark") or {}).get("score_cells_per_sec"),
                 runtime_kind=(d.get("runtime") or {}).get("kind"),
+                trust_status=profiles[d["_id"]]["status"] if d["_id"] in profiles else None,
+                trust=round(trust_of(profiles[d["_id"]]), 3) if d["_id"] in profiles else None,
                 last_seen_age_seconds=(now - seen).total_seconds() if seen else None,
                 current_assignment_id=d.get("current_assignment_id"),
                 current_task_id=asg["task_id"] if asg else None,

@@ -41,6 +41,9 @@ class ExecutionSettings(_Strict):
         return self
 
 
+VerificationMode = Literal["off", "adaptive", "full"]
+
+
 class ImageTaskManifest(_Strict):
     """Image CNN training (separate pipeline from the CSV workloads; ARCHITECTURE 4.5)."""
 
@@ -50,6 +53,7 @@ class ImageTaskManifest(_Strict):
     dataset_id: str = Field(pattern=r"^img_")
     params: CnnParams = CnnParams()
     execution: ExecutionSettings = ExecutionSettings()
+    verification: VerificationMode | None = None  # None: the server default (adaptive)
 
 
 class TaskManifest(_Strict):
@@ -59,6 +63,7 @@ class TaskManifest(_Strict):
     dataset_id: str = Field(pattern=r"^ds_")
     params: GaussianNBParams | LinearRidgeParams
     execution: ExecutionSettings = ExecutionSettings()
+    verification: VerificationMode | None = None  # None: the server default (adaptive)
 
     @model_validator(mode="before")
     @classmethod

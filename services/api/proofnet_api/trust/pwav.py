@@ -67,9 +67,12 @@ def min_samples(p: float, gamma: float) -> int:
 
 def tolerance_rank(n: int, p: float, gamma: float) -> int | None:
     """Smallest rank j (1-based, ascending) such that X_(j) is an upper (p, gamma) tolerance limit:
-    P(X_(j) >= q_p) = P(Binomial(n, p) <= j - 1) >= gamma. None if n is too small even for j = n."""
+    P(X_(j) >= q_p) = P(Binomial(n, p) <= j - 1) >= gamma. None if n is too small even for j = n.
+    O(n): the CDF is accumulated term by term."""
+    cdf = 0.0
     for j in range(1, n + 1):
-        if binom_cdf(j - 1, n, p) >= gamma:
+        cdf += math.exp(_log_binom_pmf(j - 1, n, p))  # now cdf = P(X <= j - 1)
+        if cdf >= gamma:
             return j
     return None
 
@@ -166,7 +169,7 @@ class AuditParams:
     floor: float = 0.05  # minimum audit probability, always
     initial: float = 0.30  # base probability right after probation
     probation_results: int = 5  # a new device is audited on every one of its first results
-    tau: float = 50.0  # clean audits for the base rate to close half the gap to the floor
+    tau: float = 10.0  # clean audits for the base rate to close half the gap to the floor
     memory_decay: float = 0.98  # per audit decay of the persistent suspicion memory
 
 

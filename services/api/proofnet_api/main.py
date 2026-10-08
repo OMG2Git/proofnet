@@ -19,8 +19,13 @@ from .devices.routes import router as devices_router
 from .errors import install_error_handlers
 from .image_tasks.routes import router as image_router
 from .network.routes import router as network_router
+from .rewards.routes import router as rewards_router
+from .security.headers import SecurityHeadersMiddleware
+from .security.ratelimit import RateLimiter
+from .security.routes import router as security_router
 from .tasks.monitor import router as monitor_router
 from .tasks.routes import router as tasks_router
+from .trust.routes import router as trust_router
 from .worker_gateway.assignments import router as assignments_router
 from .worker_gateway.routes import router as worker_router
 from .worker_gateway.runtime import build_bundle
@@ -50,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.background = set()
     app.state.snapshot_cache = {}
+    app.state.limiter = RateLimiter()
     app.state.bundle = build_bundle()
     app.add_middleware(
         CORSMiddleware,
@@ -57,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(SecurityHeadersMiddleware)
     install_error_handlers(app)
 
     error_models: dict[int | str, dict[str, Any]] = {
@@ -81,6 +88,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         monitor_router,
         image_router,
         admin_router,
+        trust_router,
+        rewards_router,
+        security_router,
     ):
         api.include_router(r)
 

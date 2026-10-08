@@ -3,6 +3,7 @@
 Each test session uses a throwaway database (proofnet_test_<random>) that is dropped afterwards.
 """
 
+import os
 import secrets
 from collections.abc import Iterator
 from typing import Any
@@ -15,6 +16,7 @@ from pymongo import MongoClient
 from proofnet_api.config import Settings
 from proofnet_api.main import create_app
 
+os.environ.setdefault("RATE_LIMIT_AUTH_PER_MINUTE", "1000000")  # tests sign in constantly
 _BASE = Settings()  # reads .env / environment
 
 
