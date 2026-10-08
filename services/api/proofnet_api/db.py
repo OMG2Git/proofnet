@@ -22,6 +22,7 @@ class Db:
     client: AsyncMongoClient[dict[str, Any]]
     db: AsyncDatabase[dict[str, Any]]
     fs: AsyncGridFSBucket
+    indexes_ready: bool = False
 
     def col(self, name: str) -> AsyncCollection[dict[str, Any]]:
         return self.db[name]
@@ -36,11 +37,21 @@ async def connect(settings: Settings) -> Db:
     )
     db = client[settings.mongodb_db]
     handle = Db(client, db, AsyncGridFSBucket(db))
-    try:
-        await ensure_indexes(handle)
-    except Exception:  # e.g. the free tier is full (writes blocked): keep serving reads/logins
-        logging.getLogger("proofnet.db").exception("could not ensure indexes at startup")
+    await try_ensure_indexes(handle)
     return handle
+
+
+async def try_ensure_indexes(h: Db) -> bool:
+    """Create indexes; on failure (database full, network hiccup) keep serving and let the
+    reconciler retry. Unique indexes matter (e.g. one account per email), so this must converge."""
+    if h.indexes_ready:
+        return True
+    try:
+        await ensure_indexes(h)
+        h.indexes_ready = True
+    except Exception:
+        logging.getLogger("proofnet.db").exception("could not ensure indexes (will retry)")
+    return h.indexes_ready
 
 
 async def ensure_indexes(h: Db) -> None:

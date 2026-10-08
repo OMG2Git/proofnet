@@ -159,3 +159,34 @@ def test_startup_survives_a_database_that_blocks_writes(
             await db.close()
 
     assert asyncio.run(go()) is True
+
+
+def test_failed_index_creation_is_retried_until_it_succeeds(
+    dbname: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without the unique email index duplicates would be accepted: it must converge."""
+    from proofnet_api import db as dbmod
+
+    real = dbmod.ensure_indexes
+    calls: list[int] = []
+
+    async def flaky(h: Any) -> None:
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("DNS timeout")
+        await real(h)
+
+    monkeypatch.setattr(dbmod, "ensure_indexes", flaky)
+
+    async def go() -> tuple[bool, bool, int]:
+        db = await connect(settings(dbname, 300))
+        try:
+            first = db.indexes_ready  # startup attempt failed
+            ok = await dbmod.try_ensure_indexes(db)  # what the reconciler does next
+            names = [i["name"] async for i in await db.col("users").list_indexes()]
+            return first, ok, len(names)
+        finally:
+            await db.close()
+
+    first, ok, n_idx = asyncio.run(go())
+    assert first is False and ok is True and n_idx == 2  # _id_ + the unique email index

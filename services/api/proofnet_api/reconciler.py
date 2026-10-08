@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from .aggregation.service import aggregate_task, release_stale_claims
 from .config import Settings
-from .db import Db, utcnow
+from .db import Db, try_ensure_indexes, utcnow
 from .events import emit
 from .scheduling.lifecycle import expire_assignments, expire_tasks
 from .scheduling.scheduler import schedule_pass
@@ -48,6 +48,7 @@ async def resume_aggregations(db: Db) -> None:
 
 
 async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> None:
+    await try_ensure_indexes(db)  # no-op once they exist
     await mark_offline_devices(db, settings, now)
     await expire_assignments(db, settings, now)  # deadlines, offline devices -> retry
     await expire_tasks(db, settings, now)  # queue and task timeouts
