@@ -116,7 +116,7 @@ Repository layout: `apps/web`, `services/api`, `packages/kernels` (`core/` = Num
 - Vercel is frontend only. FastAPI is a separate service.
 - MVP limits: CSV ≤ 25 MB, ≤ 300k rows, ≤ 64 numeric features, 2–50 classes, ≤ 8 devices per task.
 - Android page must stay in the foreground with the screen on (wake lock); a backgrounded tab is treated as offline.
-- Atlas storage is small: no chunk copies stored; demo reset script.
+- Atlas storage is small (512 MB, writes blocked at the limit): no chunk copies stored; a storage guard releases old data above `STORAGE_BUDGET_MB` (ARCHITECTURE 16.1). The database name must not contain spaces (the project is named "Project 0"; the database is `Project0`).
 
 ---
 

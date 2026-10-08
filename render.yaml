@@ -14,7 +14,7 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB
-        value: proofnet_prod
+        value: Project0
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
