@@ -24,19 +24,27 @@ export default function LimitationsPage() {
             centralized gradient.
           </li>
           <li>Failures (a device going offline, corrupt or late results, cancellation) are survived or reported.</li>
+          <li>
+            <strong>Verification and trust (Part 2).</strong> The backend audits results by recomputing them, with a
+            probability that falls as a device proves itself but never below a floor. Evidence from audits builds a
+            trust score; a device whose evidence passes a threshold (calibrated so an honest device is wrongly accused
+            with lifetime probability ≤ 0.1%) is quarantined and loses unverified rewards. Every finished task is also
+            compared with a centralized recomputation.
+          </li>
         </ul>
-        <h2>Not guaranteed (Part 2 research)</h2>
+        <h2>Not guaranteed</h2>
         <ul>
           <li>
-            <strong>Results are unverified.</strong> A malicious contributor could return well-formed but wrong
-            numbers. Only the sampled CNN rounds and the final reference checks catch some of this. Detection,
-            trust scores and rewards are future work.
+            <strong>Verification is probabilistic.</strong> Between audits a cheating device can get a wrong result
+            merged; it is found by a later audit or by the end-to-end check, which repairs finished CSV tasks. For
+            CNN training, rounds already merged cannot be undone (the task is flagged), and a corruption smaller than
+            the numerical tolerance is invisible by design.
           </li>
           <li>
             <strong>No confidentiality.</strong> Contributors see the raw rows (CSV) or training images (CNN) of the
             work they compute. Do not upload sensitive data.
           </li>
-          <li>No protection against fake devices (Sybil) or collusion; device tokens live in the contributor&apos;s browser.</li>
+          <li>Fake identities are only partly handled: a new device inherits half of its owner&apos;s suspicion, but an attacker with many accounts is not stopped. Reward credits are an internal score, not money. Device tokens live in the contributor&apos;s browser.</li>
           <li>
             Phones must keep the page in the foreground with the screen on; a locked or backgrounded phone is treated
             as offline and its work is reassigned.

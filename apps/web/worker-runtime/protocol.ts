@@ -15,6 +15,8 @@ export type RunMessage = {
   params: Record<string, unknown>;
   /** Chunk input .npz bytes (X, y); transferred, never pickled. */
   input: ArrayBuffer;
+  /** Demo only: pretend to be a cheating device (see compute.worker.ts DEMO_ATTACK). */
+  attack?: string;
 };
 
 export type ToWorker = WorkerInit | { type: "bench" } | RunMessage;

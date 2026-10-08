@@ -28,6 +28,18 @@ export type ResultAck = S["ResultAck"];
 export type TaskStatus = S["TaskStatus"];
 export type ArtifactOut = S["ArtifactOut"];
 export type EventOut = S["EventOut"];
+export type TrustOverview = S["TrustOverview"];
+export type DeviceTrust = S["DeviceTrust"];
+export type VerificationRecord = S["VerificationRecord"];
+export type CalibrationClass = S["CalibrationClass"];
+export type RewardsOut = S["RewardsOut"];
+export type Balance = S["Balance"];
+export type NetworkRewardRow = S["NetworkRewardRow"];
+export type LedgerCheck = S["LedgerCheck"];
+export type SecurityOverview = S["SecurityOverview"];
+export type SecurityEvent = S["SecurityEvent"];
+export type SimulateRequest = S["SimulateRequest"];
+export type SimulationOut = S["SimulationOut"];
 
 const ENV_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 const BASE_KEY = "proofnet.apiBase";
@@ -168,6 +180,25 @@ export const api = {
   patchDevice: (id: string, b: S["DevicePatch"]) =>
     request<DeviceOut>(`/devices/${id}`, { method: "PATCH", json: b }),
   networkSummary: () => request<NetworkSummary>("/network/summary"),
+  trustOverview: () => request<TrustOverview>("/trust/overview"),
+  trustRecords: (taskId: string) =>
+    request<VerificationRecord[]>(`/trust/records?task_id=${encodeURIComponent(taskId)}&limit=200`),
+  simulate: (b: SimulateRequest) =>
+    request<SimulationOut>("/trust/simulate", { method: "POST", json: b }),
+  myRewards: () => request<RewardsOut>("/rewards/me"),
+  networkRewards: () => request<NetworkRewardRow[]>("/rewards/network"),
+  ledgerCheck: () => request<LedgerCheck>("/rewards/ledger/check"),
+  securityOverview: () => request<SecurityOverview>("/security/overview"),
+  quarantineDevice: (id: string, reason: string) =>
+    request<{ quarantined: boolean }>(`/security/devices/${id}/quarantine`, {
+      method: "POST",
+      json: { reason },
+    }),
+  reinstateDevice: (id: string, reason: string) =>
+    request<{ reinstated: boolean }>(`/security/devices/${id}/reinstate`, {
+      method: "POST",
+      json: { reason },
+    }),
 };
 
 /** Worker-side endpoints; authenticated with the device token, not the user JWT. */

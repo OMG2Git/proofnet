@@ -251,6 +251,27 @@
         "title": "AssignmentPayload",
         "type": "object"
       },
+      "Balance": {
+        "properties": {
+          "confirmed": {
+            "default": 0.0,
+            "title": "Confirmed",
+            "type": "number"
+          },
+          "pending": {
+            "default": 0.0,
+            "title": "Pending",
+            "type": "number"
+          },
+          "revoked": {
+            "default": 0.0,
+            "title": "Revoked",
+            "type": "number"
+          }
+        },
+        "title": "Balance",
+        "type": "object"
+      },
       "Benchmark": {
         "properties": {
           "bench_version": {
@@ -296,6 +317,127 @@
           "file"
         ],
         "title": "Body_upload_image_dataset_api_v1_image_datasets_post",
+        "type": "object"
+      },
+      "CalibrationClass": {
+        "properties": {
+          "class_key": {
+            "title": "Class Key",
+            "type": "string"
+          },
+          "gamma": {
+            "title": "Gamma",
+            "type": "number"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "margin": {
+            "title": "Margin",
+            "type": "number"
+          },
+          "min_samples": {
+            "title": "Min Samples",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p": {
+            "title": "P",
+            "type": "number"
+          },
+          "sample_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Max"
+          },
+          "sample_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Median"
+          },
+          "sample_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Min"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
+          },
+          "tolerance_floor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance Floor"
+          },
+          "tolerance_hard": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance Hard"
+          }
+        },
+        "required": [
+          "class_key",
+          "n",
+          "limit",
+          "min_samples",
+          "p",
+          "gamma",
+          "margin",
+          "source"
+        ],
+        "title": "CalibrationClass",
         "type": "object"
       },
       "CancelDirective": {
@@ -766,6 +908,139 @@
         "title": "DeviceState",
         "type": "string"
       },
+      "DeviceTrust": {
+        "properties": {
+          "audit_probability": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Audit Probability",
+            "type": "number"
+          },
+          "audits": {
+            "title": "Audits",
+            "type": "integer"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_name": {
+            "title": "Device Name",
+            "type": "string"
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": "number"
+          },
+          "exceedances": {
+            "title": "Exceedances",
+            "type": "integer"
+          },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TrustEvent"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "log10_ratio": {
+            "title": "Log10 Ratio",
+            "type": "number"
+          },
+          "memory": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Memory",
+            "type": "number"
+          },
+          "n_clean": {
+            "title": "N Clean",
+            "type": "integer"
+          },
+          "owner_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Display Name"
+          },
+          "quarantine": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantine"
+          },
+          "results_seen": {
+            "title": "Results Seen",
+            "type": "integer"
+          },
+          "reward_multiplier": {
+            "title": "Reward Multiplier",
+            "type": "number"
+          },
+          "runtime_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Kind"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "suspicion": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Suspicion",
+            "type": "number"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "number"
+          },
+          "trust": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Trust",
+            "type": "number"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_name",
+          "status",
+          "results_seen",
+          "audits",
+          "n_clean",
+          "exceedances",
+          "evidence",
+          "threshold",
+          "log10_ratio",
+          "suspicion",
+          "memory",
+          "trust",
+          "audit_probability",
+          "reward_multiplier"
+        ],
+        "title": "DeviceTrust",
+        "type": "object"
+      },
       "DeviceType": {
         "enum": [
           "android_phone",
@@ -1156,6 +1431,22 @@
             "default": "cnn_image_train",
             "title": "Task Type",
             "type": "string"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "adaptive",
+                  "full"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification"
           }
         },
         "required": [
@@ -1163,6 +1454,50 @@
           "dataset_id"
         ],
         "title": "ImageTaskManifest",
+        "type": "object"
+      },
+      "LedgerCheck": {
+        "properties": {
+          "consistent": {
+            "title": "Consistent",
+            "type": "boolean"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "events": {
+            "title": "Events",
+            "type": "integer"
+          },
+          "mismatches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mismatches",
+            "type": "array"
+          },
+          "replayed": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Balance"
+            },
+            "title": "Replayed",
+            "type": "object"
+          },
+          "users_checked": {
+            "title": "Users Checked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "consistent",
+          "events",
+          "entries",
+          "users_checked",
+          "mismatches",
+          "replayed"
+        ],
+        "title": "LedgerCheck",
         "type": "object"
       },
       "LinearRidgeParams": {
@@ -1344,6 +1679,28 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "trust": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust"
+          },
+          "trust_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Status"
           }
         },
         "required": [
@@ -1353,6 +1710,33 @@
           "status"
         ],
         "title": "NetworkDevice",
+        "type": "object"
+      },
+      "NetworkRewardRow": {
+        "properties": {
+          "balance": {
+            "$ref": "#/components/schemas/Balance"
+          },
+          "devices": {
+            "title": "Devices",
+            "type": "integer"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "display_name",
+          "mine",
+          "devices",
+          "balance"
+        ],
+        "title": "NetworkRewardRow",
         "type": "object"
       },
       "NetworkSummary": {
@@ -1442,6 +1826,21 @@
         "title": "PartialResultEnvelope",
         "type": "object"
       },
+      "ReasonBody": {
+        "properties": {
+          "reason": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReasonBody",
+        "type": "object"
+      },
       "RefreshRuntimeDirective": {
         "properties": {
           "kernel_version": {
@@ -1526,6 +1925,138 @@
           "total_ms"
         ],
         "title": "ResultTimings",
+        "type": "object"
+      },
+      "RewardEntry": {
+        "properties": {
+          "acceptance": {
+            "title": "Acceptance",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "base_amount": {
+            "title": "Base Amount",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "multiplier": {
+            "title": "Multiplier",
+            "type": "number"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "trust": {
+            "title": "Trust",
+            "type": "number"
+          },
+          "work_units": {
+            "title": "Work Units",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "task_id",
+          "device_id",
+          "work_units",
+          "base_amount",
+          "trust",
+          "multiplier",
+          "amount",
+          "acceptance",
+          "status",
+          "created_at"
+        ],
+        "title": "RewardEntry",
+        "type": "object"
+      },
+      "RewardsOut": {
+        "properties": {
+          "balance": {
+            "$ref": "#/components/schemas/Balance"
+          },
+          "base_multiplier": {
+            "title": "Base Multiplier",
+            "type": "number"
+          },
+          "device_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Device Names",
+            "type": "object"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/RewardEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "per_device": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Balance"
+            },
+            "title": "Per Device",
+            "type": "object"
+          },
+          "rate_credits_per_million_units": {
+            "title": "Rate Credits Per Million Units",
+            "type": "number"
+          }
+        },
+        "required": [
+          "balance",
+          "per_device",
+          "device_names",
+          "entries",
+          "rate_credits_per_million_units",
+          "base_multiplier"
+        ],
+        "title": "RewardsOut",
         "type": "object"
       },
       "RunDirective": {
@@ -1638,6 +2169,106 @@
         "title": "RuntimeManifest",
         "type": "object"
       },
+      "SecurityEvent": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Data",
+            "type": "object"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "kind",
+          "severity"
+        ],
+        "title": "SecurityEvent",
+        "type": "object"
+      },
+      "SecurityOverview": {
+        "properties": {
+          "controls": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Controls",
+            "type": "array"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "quarantined_devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceTrust"
+            },
+            "title": "Quarantined Devices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "quarantined_devices",
+          "events",
+          "counts",
+          "controls"
+        ],
+        "title": "SecurityOverview",
+        "type": "object"
+      },
       "SessionRequest": {
         "properties": {
           "benchmark": {
@@ -1709,6 +2340,131 @@
         "title": "SignupRequest",
         "type": "object"
       },
+      "SimulateRequest": {
+        "properties": {
+          "alpha": {
+            "default": 0.001,
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Alpha",
+            "type": "number"
+          },
+          "attack_strength": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Attack Strength",
+            "type": "number"
+          },
+          "attackers": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Attackers",
+            "type": "integer"
+          },
+          "audit_floor": {
+            "default": 0.05,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Audit Floor",
+            "type": "number"
+          },
+          "cheat_rate": {
+            "default": 1.0,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Cheat Rate",
+            "type": "number"
+          },
+          "fixed_rate": {
+            "default": 0.3,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Fixed Rate",
+            "type": "number"
+          },
+          "honest": {
+            "default": 20,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Honest",
+            "type": "integer"
+          },
+          "policy": {
+            "default": "adaptive",
+            "pattern": "^(adaptive|fixed|none)$",
+            "title": "Policy",
+            "type": "string"
+          },
+          "q0": {
+            "default": 0.03,
+            "exclusiveMaximum": 0.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Q0",
+            "type": "number"
+          },
+          "rounds": {
+            "default": 400,
+            "maximum": 2000.0,
+            "minimum": 10.0,
+            "title": "Rounds",
+            "type": "integer"
+          },
+          "seed": {
+            "default": 1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "sleeper_after": {
+            "default": 0,
+            "maximum": 5000.0,
+            "minimum": 0.0,
+            "title": "Sleeper After",
+            "type": "integer"
+          }
+        },
+        "title": "SimulateRequest",
+        "type": "object"
+      },
+      "SimulationOut": {
+        "properties": {
+          "detections": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Detections",
+            "type": "array"
+          },
+          "request": {
+            "$ref": "#/components/schemas/SimulateRequest"
+          },
+          "series": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Series",
+            "type": "object"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "request",
+          "series",
+          "summary",
+          "detections"
+        ],
+        "title": "SimulationOut",
+        "type": "object"
+      },
       "StartPolicy": {
         "enum": [
           "wait_for_min_devices"
@@ -1757,6 +2513,22 @@
           },
           "task_type": {
             "$ref": "#/components/schemas/TaskType"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "adaptive",
+                  "full"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification"
           }
         },
         "required": [
@@ -2108,6 +2880,165 @@
         "title": "TrainingStatus",
         "type": "object"
       },
+      "TrustEvent": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "discrepancy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discrepancy"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "suspicion": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspicion"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
+          }
+        },
+        "required": [
+          "at",
+          "event"
+        ],
+        "title": "TrustEvent",
+        "type": "object"
+      },
+      "TrustOverview": {
+        "properties": {
+          "audit_rate": {
+            "title": "Audit Rate",
+            "type": "number"
+          },
+          "audits": {
+            "title": "Audits",
+            "type": "integer"
+          },
+          "calibration": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationClass"
+            },
+            "title": "Calibration",
+            "type": "array"
+          },
+          "devices": {
+            "title": "Devices",
+            "type": "integer"
+          },
+          "devices_detail": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceTrust"
+            },
+            "title": "Devices Detail",
+            "type": "array"
+          },
+          "exceedances": {
+            "title": "Exceedances",
+            "type": "integer"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Parameters",
+            "type": "object"
+          },
+          "probation": {
+            "title": "Probation",
+            "type": "integer"
+          },
+          "quarantined": {
+            "title": "Quarantined",
+            "type": "integer"
+          },
+          "recent_records": {
+            "items": {
+              "$ref": "#/components/schemas/VerificationRecord"
+            },
+            "title": "Recent Records",
+            "type": "array"
+          },
+          "results_seen": {
+            "title": "Results Seen",
+            "type": "integer"
+          },
+          "trusted": {
+            "title": "Trusted",
+            "type": "integer"
+          },
+          "watch": {
+            "title": "Watch",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "devices",
+          "probation",
+          "trusted",
+          "watch",
+          "quarantined",
+          "results_seen",
+          "audits",
+          "exceedances",
+          "audit_rate",
+          "parameters",
+          "devices_detail",
+          "calibration",
+          "recent_records"
+        ],
+        "title": "TrustOverview",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "display_name": {
@@ -2185,6 +3116,160 @@
           "summary"
         ],
         "title": "ValidationResult",
+        "type": "object"
+      },
+      "VerificationRecord": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "audit_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Probability"
+          },
+          "audited": {
+            "title": "Audited",
+            "type": "boolean"
+          },
+          "class_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Key"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "discrepancy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discrepancy"
+          },
+          "draw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "exceeded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exceeded"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "suspicion": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspicion"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance"
+          },
+          "tolerance_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance Source"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "task_id",
+          "device_id",
+          "mode",
+          "audited",
+          "decision"
+        ],
+        "title": "VerificationRecord",
         "type": "object"
       }
     }
@@ -3804,6 +4889,255 @@
         ]
       }
     },
+    "/api/v1/rewards/ledger/check": {
+      "get": {
+        "description": "Replay the append-only event log and compare it with the current entries. Admins check\nevery account, others only their own.",
+        "operationId": "ledger_check_api_v1_rewards_ledger_check_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Ledger Check",
+        "tags": [
+          "rewards"
+        ]
+      }
+    },
+    "/api/v1/rewards/me": {
+      "get": {
+        "operationId": "my_rewards_api_v1_rewards_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "My Rewards",
+        "tags": [
+          "rewards"
+        ]
+      }
+    },
+    "/api/v1/rewards/network": {
+      "get": {
+        "description": "Everyone's balance by display name (a leaderboard for the demo; no e-mails).",
+        "operationId": "network_rewards_api_v1_rewards_network_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NetworkRewardRow"
+                  },
+                  "title": "Response Network Rewards Api V1 Rewards Network Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Network Rewards",
+        "tags": [
+          "rewards"
+        ]
+      }
+    },
     "/api/v1/runtime/kernels/{version}": {
       "get": {
         "operationId": "kernel_bundle_api_v1_runtime_kernels__version__get",
@@ -3972,6 +5306,299 @@
         "summary": "Runtime Manifest",
         "tags": [
           "worker"
+        ]
+      }
+    },
+    "/api/v1/security/devices/{device_id}/quarantine": {
+      "post": {
+        "operationId": "quarantine_api_v1_security_devices__device_id__quarantine_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Quarantine Api V1 Security Devices  Device Id  Quarantine Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Quarantine",
+        "tags": [
+          "security"
+        ]
+      }
+    },
+    "/api/v1/security/devices/{device_id}/reinstate": {
+      "post": {
+        "operationId": "reinstate_api_v1_security_devices__device_id__reinstate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Reinstate Api V1 Security Devices  Device Id  Reinstate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Reinstate",
+        "tags": [
+          "security"
+        ]
+      }
+    },
+    "/api/v1/security/overview": {
+      "get": {
+        "operationId": "overview_api_v1_security_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "security"
         ]
       }
     },
@@ -4884,6 +6511,384 @@
         "summary": "Training Status",
         "tags": [
           "images"
+        ]
+      }
+    },
+    "/api/v1/trust/devices/{device_id}": {
+      "get": {
+        "operationId": "device_detail_api_v1_trust_devices__device_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTrust"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Device Detail",
+        "tags": [
+          "trust"
+        ]
+      }
+    },
+    "/api/v1/trust/overview": {
+      "get": {
+        "operationId": "overview_api_v1_trust_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "trust"
+        ]
+      }
+    },
+    "/api/v1/trust/records": {
+      "get": {
+        "operationId": "records_api_v1_trust_records_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "task_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VerificationRecord"
+                  },
+                  "title": "Response Records Api V1 Trust Records Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Records",
+        "tags": [
+          "trust"
+        ]
+      }
+    },
+    "/api/v1/trust/simulate": {
+      "post": {
+        "description": "Population simulation of the audit policy (pure model; never touches live data).",
+        "operationId": "simulate_api_v1_trust_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Simulate",
+        "tags": [
+          "trust"
         ]
       }
     },

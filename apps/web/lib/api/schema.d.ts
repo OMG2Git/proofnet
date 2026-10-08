@@ -300,6 +300,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rewards/ledger/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ledger Check
+         * @description Replay the append-only event log and compare it with the current entries. Admins check
+         *     every account, others only their own.
+         */
+        get: operations["ledger_check_api_v1_rewards_ledger_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rewards/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Rewards */
+        get: operations["my_rewards_api_v1_rewards_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rewards/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Network Rewards
+         * @description Everyone's balance by display name (a leaderboard for the demo; no e-mails).
+         */
+        get: operations["network_rewards_api_v1_rewards_network_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runtime/kernels/{version}": {
         parameters: {
             query?: never;
@@ -326,6 +384,57 @@ export interface paths {
         };
         /** Runtime Manifest */
         get: operations["runtime_manifest_api_v1_runtime_manifest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/devices/{device_id}/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quarantine */
+        post: operations["quarantine_api_v1_security_devices__device_id__quarantine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/devices/{device_id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reinstate */
+        post: operations["reinstate_api_v1_security_devices__device_id__reinstate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["overview_api_v1_security_overview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -489,6 +598,77 @@ export interface paths {
         get: operations["training_status_api_v1_tasks__task_id__training_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Device Detail */
+        get: operations["device_detail_api_v1_trust_devices__device_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["overview_api_v1_trust_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Records */
+        get: operations["records_api_v1_trust_records_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trust/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate
+         * @description Population simulation of the audit policy (pure model; never touches live data).
+         */
+        post: operations["simulate_api_v1_trust_simulate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -698,6 +878,24 @@ export interface components {
             /** Task Id */
             task_id: string;
         };
+        /** Balance */
+        Balance: {
+            /**
+             * Confirmed
+             * @default 0
+             */
+            confirmed: number;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * Revoked
+             * @default 0
+             */
+            revoked: number;
+        };
         /** Benchmark */
         Benchmark: {
             /** Bench Version */
@@ -714,6 +912,37 @@ export interface components {
         Body_upload_image_dataset_api_v1_image_datasets_post: {
             /** File */
             file: string;
+        };
+        /** CalibrationClass */
+        CalibrationClass: {
+            /** Class Key */
+            class_key: string;
+            /** Gamma */
+            gamma: number;
+            /** Limit */
+            limit: number | null;
+            /** Margin */
+            margin: number;
+            /** Min Samples */
+            min_samples: number;
+            /** N */
+            n: number;
+            /** P */
+            p: number;
+            /** Sample Max */
+            sample_max?: number | null;
+            /** Sample Median */
+            sample_median?: number | null;
+            /** Sample Min */
+            sample_min?: number | null;
+            /** Source */
+            source: string;
+            /** Tolerance */
+            tolerance?: number | null;
+            /** Tolerance Floor */
+            tolerance_floor?: number | null;
+            /** Tolerance Hard */
+            tolerance_hard?: number | null;
         };
         /** CancelDirective */
         CancelDirective: {
@@ -898,6 +1127,52 @@ export interface components {
          * @enum {string}
          */
         DeviceState: "initializing" | "idle" | "busy";
+        /** DeviceTrust */
+        DeviceTrust: {
+            /** Audit Probability */
+            audit_probability: number;
+            /** Audits */
+            audits: number;
+            /** Device Id */
+            device_id: string;
+            /** Device Name */
+            device_name: string;
+            /** Evidence */
+            evidence: number;
+            /** Exceedances */
+            exceedances: number;
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["TrustEvent"][];
+            /** Log10 Ratio */
+            log10_ratio: number;
+            /** Memory */
+            memory: number;
+            /** N Clean */
+            n_clean: number;
+            /** Owner Display Name */
+            owner_display_name?: string | null;
+            /** Quarantine */
+            quarantine?: {
+                [key: string]: unknown;
+            } | null;
+            /** Results Seen */
+            results_seen: number;
+            /** Reward Multiplier */
+            reward_multiplier: number;
+            /** Runtime Kind */
+            runtime_kind?: string | null;
+            /** Status */
+            status: string;
+            /** Suspicion */
+            suspicion: number;
+            /** Threshold */
+            threshold: number;
+            /** Trust */
+            trust: number;
+        };
         /**
          * DeviceType
          * @enum {string}
@@ -1080,6 +1355,25 @@ export interface components {
              * @constant
              */
             task_type: "cnn_image_train";
+            /** Verification */
+            verification?: ("off" | "adaptive" | "full") | null;
+        };
+        /** LedgerCheck */
+        LedgerCheck: {
+            /** Consistent */
+            consistent: boolean;
+            /** Entries */
+            entries: number;
+            /** Events */
+            events: number;
+            /** Mismatches */
+            mismatches: string[];
+            /** Replayed */
+            replayed: {
+                [key: string]: components["schemas"]["Balance"];
+            };
+            /** Users Checked */
+            users_checked: number;
         };
         /** LinearRidgeParams */
         LinearRidgeParams: {
@@ -1145,6 +1439,20 @@ export interface components {
             score_cells_per_sec?: number | null;
             /** Status */
             status: string;
+            /** Trust */
+            trust?: number | null;
+            /** Trust Status */
+            trust_status?: string | null;
+        };
+        /** NetworkRewardRow */
+        NetworkRewardRow: {
+            balance: components["schemas"]["Balance"];
+            /** Devices */
+            devices: number;
+            /** Display Name */
+            display_name: string;
+            /** Mine */
+            mine: boolean;
         };
         /** NetworkSummary */
         NetworkSummary: {
@@ -1184,6 +1492,11 @@ export interface components {
             runtime: components["schemas"]["RuntimeInfo"];
             timings: components["schemas"]["ResultTimings"];
         };
+        /** ReasonBody */
+        ReasonBody: {
+            /** Reason */
+            reason: string;
+        };
         /** RefreshRuntimeDirective */
         RefreshRuntimeDirective: {
             /** Kernel Version */
@@ -1219,6 +1532,56 @@ export interface components {
             download_ms: number;
             /** Total Ms */
             total_ms: number;
+        };
+        /** RewardEntry */
+        RewardEntry: {
+            /** Acceptance */
+            acceptance: string;
+            /** Amount */
+            amount: number;
+            /** Base Amount */
+            base_amount: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Device Id */
+            device_id: string;
+            /** Device Name */
+            device_name?: string | null;
+            /** Id */
+            id: string;
+            /** Multiplier */
+            multiplier: number;
+            /** Reason */
+            reason?: string | null;
+            /** Status */
+            status: string;
+            /** Task Id */
+            task_id: string;
+            /** Trust */
+            trust: number;
+            /** Work Units */
+            work_units: number;
+        };
+        /** RewardsOut */
+        RewardsOut: {
+            balance: components["schemas"]["Balance"];
+            /** Base Multiplier */
+            base_multiplier: number;
+            /** Device Names */
+            device_names: {
+                [key: string]: string;
+            };
+            /** Entries */
+            entries: components["schemas"]["RewardEntry"][];
+            /** Per Device */
+            per_device: {
+                [key: string]: components["schemas"]["Balance"];
+            };
+            /** Rate Credits Per Million Units */
+            rate_credits_per_million_units: number;
         };
         /** RunDirective */
         RunDirective: {
@@ -1262,6 +1625,46 @@ export interface components {
             /** Pyodide Version */
             pyodide_version: string;
         };
+        /** SecurityEvent */
+        SecurityEvent: {
+            /**
+             * Data
+             * @default {}
+             */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Device Id */
+            device_id?: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Severity */
+            severity: string;
+            /** Task Id */
+            task_id?: string | null;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
+        /** SecurityOverview */
+        SecurityOverview: {
+            /** Controls */
+            controls: {
+                [key: string]: string;
+            }[];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Events */
+            events: components["schemas"]["SecurityEvent"][];
+            /** Quarantined Devices */
+            quarantined_devices: components["schemas"]["DeviceTrust"][];
+        };
         /** SessionRequest */
         SessionRequest: {
             benchmark: components["schemas"]["Benchmark"];
@@ -1289,6 +1692,85 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** SimulateRequest */
+        SimulateRequest: {
+            /**
+             * Alpha
+             * @default 0.001
+             */
+            alpha: number;
+            /**
+             * Attack Strength
+             * @default 1
+             */
+            attack_strength: number;
+            /**
+             * Attackers
+             * @default 5
+             */
+            attackers: number;
+            /**
+             * Audit Floor
+             * @default 0.05
+             */
+            audit_floor: number;
+            /**
+             * Cheat Rate
+             * @default 1
+             */
+            cheat_rate: number;
+            /**
+             * Fixed Rate
+             * @default 0.3
+             */
+            fixed_rate: number;
+            /**
+             * Honest
+             * @default 20
+             */
+            honest: number;
+            /**
+             * Policy
+             * @default adaptive
+             */
+            policy: string;
+            /**
+             * Q0
+             * @default 0.03
+             */
+            q0: number;
+            /**
+             * Rounds
+             * @default 400
+             */
+            rounds: number;
+            /**
+             * Seed
+             * @default 1
+             */
+            seed: number;
+            /**
+             * Sleeper After
+             * @default 0
+             */
+            sleeper_after: number;
+        };
+        /** SimulationOut */
+        SimulationOut: {
+            /** Detections */
+            detections: {
+                [key: string]: unknown;
+            }[];
+            request: components["schemas"]["SimulateRequest"];
+            /** Series */
+            series: {
+                [key: string]: number[];
+            };
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
         };
         /**
          * StartPolicy
@@ -1318,6 +1800,8 @@ export interface components {
             /** Params */
             params: components["schemas"]["GaussianNBParams"] | components["schemas"]["LinearRidgeParams"];
             task_type: components["schemas"]["TaskType"];
+            /** Verification */
+            verification?: ("off" | "adaptive" | "full") | null;
         };
         /** TaskOut */
         TaskOut: {
@@ -1469,6 +1953,57 @@ export interface components {
             /** Verified Rounds */
             verified_rounds: number[];
         };
+        /** TrustEvent */
+        TrustEvent: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Discrepancy */
+            discrepancy?: number | null;
+            /** Event */
+            event: string;
+            /** Reason */
+            reason?: string | null;
+            /** Suspicion */
+            suspicion?: number | null;
+            /** Task Id */
+            task_id?: string | null;
+            /** Tolerance */
+            tolerance?: number | null;
+        };
+        /** TrustOverview */
+        TrustOverview: {
+            /** Audit Rate */
+            audit_rate: number;
+            /** Audits */
+            audits: number;
+            /** Calibration */
+            calibration: components["schemas"]["CalibrationClass"][];
+            /** Devices */
+            devices: number;
+            /** Devices Detail */
+            devices_detail: components["schemas"]["DeviceTrust"][];
+            /** Exceedances */
+            exceedances: number;
+            /** Parameters */
+            parameters: {
+                [key: string]: number;
+            };
+            /** Probation */
+            probation: number;
+            /** Quarantined */
+            quarantined: number;
+            /** Recent Records */
+            recent_records: components["schemas"]["VerificationRecord"][];
+            /** Results Seen */
+            results_seen: number;
+            /** Trusted */
+            trusted: number;
+            /** Watch */
+            watch: number;
+        };
         /** UserOut */
         UserOut: {
             /** Display Name */
@@ -1499,6 +2034,46 @@ export interface components {
             };
             /** Warnings */
             warnings: string[];
+        };
+        /** VerificationRecord */
+        VerificationRecord: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Audit Probability */
+            audit_probability?: number | null;
+            /** Audited */
+            audited: boolean;
+            /** Class Key */
+            class_key?: string | null;
+            /** Decision */
+            decision: string;
+            /** Device Id */
+            device_id: string;
+            /** Device Name */
+            device_name?: string | null;
+            /** Discrepancy */
+            discrepancy?: number | null;
+            /** Draw */
+            draw?: number | null;
+            /** Evidence */
+            evidence?: number | null;
+            /** Exceeded */
+            exceeded?: boolean | null;
+            /** Id */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Suspicion */
+            suspicion?: number | null;
+            /** Task Id */
+            task_id: string;
+            /** Tolerance */
+            tolerance?: number | null;
+            /** Tolerance Source */
+            tolerance_source?: string | null;
         };
     };
     responses: never;
@@ -2890,6 +3465,228 @@ export interface operations {
             };
         };
     };
+    ledger_check_api_v1_rewards_ledger_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerCheck"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    my_rewards_api_v1_rewards_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RewardsOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    network_rewards_api_v1_rewards_network_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkRewardRow"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     kernel_bundle_api_v1_runtime_kernels__version__get: {
         parameters: {
             query?: never;
@@ -2982,6 +3779,244 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuntimeManifest"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    quarantine_api_v1_security_devices__device_id__quarantine_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reinstate_api_v1_security_devices__device_id__reinstate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    overview_api_v1_security_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityOverview"];
                 };
             };
             /** @description Unauthorized */
@@ -3742,6 +4777,311 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrainingStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    device_detail_api_v1_trust_devices__device_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceTrust"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    overview_api_v1_trust_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrustOverview"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    records_api_v1_trust_records_get: {
+        parameters: {
+            query?: {
+                task_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationRecord"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    simulate_api_v1_trust_simulate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationOut"];
                 };
             };
             /** @description Unauthorized */

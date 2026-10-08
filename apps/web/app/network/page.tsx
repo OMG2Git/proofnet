@@ -57,7 +57,16 @@ function Network() {
               {d.device_type} · {d.runtime_kind ?? "no runtime"}
             </div>
             <div>
-              <span className={`badge ${d.status}`}>{d.status}</span>
+              <span className={`badge ${d.status}`}>{d.status}</span>{" "}
+              {d.trust_status && (
+                <span
+                  className={`badge ${d.trust_status === "trusted" ? "succeeded" : d.trust_status === "quarantined" ? "rejected" : d.trust_status === "watch" ? "busy" : "pending"}`}
+                  title={`trust ${(d.trust ?? 0).toFixed(2)}`}
+                  data-testid="trust-badge"
+                >
+                  {d.trust_status}
+                </span>
+              )}
             </div>
             <div>{d.score_cells_per_sec ? `${(d.score_cells_per_sec / 1e6).toFixed(2)} M cells/s` : "no benchmark"}</div>
             <div className="muted">

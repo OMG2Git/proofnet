@@ -36,6 +36,7 @@ function Wizard() {
   const [verify, setVerify] = useState(3);
   const [minDevices, setMinDevices] = useState(1);
   const [maxDevices, setMaxDevices] = useState(4);
+  const [verification, setVerification] = useState<"adaptive" | "full" | "off">("adaptive");
   const [report, setReport] = useState<ValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -87,6 +88,7 @@ function Wizard() {
         init_seed: 0,
       },
       execution: { min_devices: minDevices, max_devices: maxDevices, start_policy: "wait_for_min_devices" },
+      verification,
     };
   }
 
@@ -209,6 +211,14 @@ function Wizard() {
             <label>
               Max devices
               <input type="number" min={1} max={8} value={maxDevices} onChange={(e) => setMaxDevices(Number(e.target.value))} />
+            </label>
+            <label title="Adaptive: every result of a new device is audited, then less often as it earns trust (never below the floor). Full: audit everything. Off: trust all (not recommended).">
+              Verification
+              <select value={verification} onChange={(e) => setVerification(e.target.value as "adaptive" | "full" | "off")}>
+                <option value="adaptive">Adaptive audits (default)</option>
+                <option value="full">Audit every result</option>
+                <option value="off">No audits</option>
+              </select>
             </label>
           </div>
           <div className="row">

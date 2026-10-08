@@ -40,6 +40,8 @@ export class WorkerController {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private wake: WakeLockSentinelLike | null = null;
   private stopped = true;
+  /** Demo only: perturb results on purpose (the owner switches it on in the console). */
+  demoAttack = "none";
   private backoffMs = 1000;
   private t0 = 0;
   private snap: ControllerSnapshot = {
@@ -277,11 +279,20 @@ export class WorkerController {
       const result = await new Promise<Extract<FromWorker, { type: "result" }>>((resolve, reject) => {
         this.pendingRun = { resolve, reject };
         this.worker?.postMessage(
-          { type: "run", kernel: a.kernel, params: a.params, input } satisfies ToWorker,
+          {
+            type: "run",
+            kernel: a.kernel,
+            params: a.params,
+            input,
+            attack: this.demoAttack,
+          } satisfies ToWorker,
           [input],
         );
       });
-      this.emit({}, `Computed in ${Math.round(result.computeMs)} ms`);
+      this.emit(
+        {},
+        `Computed in ${Math.round(result.computeMs)} ms${this.demoAttack !== "none" ? ` (DEMO: result perturbed by '${this.demoAttack}')` : ""}`,
+      );
       // Send the exact JSON text Python produced for the payload: re-serialising in JS would turn
       // 0.0 into 0 and break the payload digest.
       const head = JSON.stringify({

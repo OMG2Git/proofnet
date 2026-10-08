@@ -87,6 +87,63 @@ function bench() {
 
 // Fixed, ProofNet-authored program: loads the chunk, runs the selected core kernel's map.
 // No user-supplied code is ever executed.
+// DEMO ONLY (presentation of the verification layer): when the owner explicitly switches on
+// "simulate a cheating device" in the worker console, the result is perturbed in a structurally
+// valid way (same shapes, finite numbers, correct counts), exactly like the CLI attack harness.
+// The backend does not know and does not care: it audits and judges the numbers.
+const DEMO_ATTACK = `
+import base64
+import numpy as np
+_COUNT = {"n", "n_params", "correct"}
+_NONNEG = {"M2", "Sxx", "Syy"}
+_rng = np.random.default_rng(20260101)
+
+def _tr(a, mode, key):
+    a = np.asarray(a, dtype=np.float64)
+    scale = float(np.max(np.abs(a))) if a.size else 0.0
+    scale = scale if scale > 0 else 1.0
+    if mode == "subtle":
+        return a * (1.0 + 1e-4)
+    if mode == "scale":
+        return a * 1.05
+    if mode == "bias":
+        return a + 0.05 * scale
+    if mode == "noise":
+        out = a + _rng.normal(0.0, 0.01 * scale, a.shape)
+        return np.abs(out) if key in _NONNEG else out
+    if mode == "sign_flip":
+        return a if key in _NONNEG else -a
+    if mode == "zero":
+        return np.zeros_like(a)
+    if mode == "random":
+        out = _rng.normal(0.0, scale, a.shape)
+        return np.abs(out) if key in _NONNEG else out
+    return a
+
+def _walk(o, mode, key=""):
+    if isinstance(o, dict):
+        out = {}
+        for k, v in o.items():
+            if k in _COUNT:
+                out[k] = v
+            elif k == "grad_b64":
+                g = np.frombuffer(base64.b64decode(v), dtype="<f4").astype(np.float64)
+                out[k] = base64.b64encode(np.ascontiguousarray(_tr(g, mode, k), dtype="<f4").tobytes()).decode("ascii")
+            elif k == "loss_sum":
+                out[k] = abs(float(_tr([v], mode, "loss_sum")[0]))
+            else:
+                out[k] = _walk(v, mode, k)
+        return out
+    if isinstance(o, list):
+        arr = np.asarray(o)
+        if arr.dtype.kind in "iu":
+            return o
+        return _tr(arr, mode, key).tolist()
+    if isinstance(o, float):
+        return float(_tr([o], mode, key)[0])
+    return o
+`;
+
 const RUN_PROGRAM = `
 import json, time
 import numpy as np
@@ -105,6 +162,8 @@ elif _pn_kernel == "cnn_image_train":
 else:
     raise ValueError("unknown kernel " + str(_pn_kernel))
 compute_ms = (time.perf_counter() - t) * 1000.0
+if _pn_attack and _pn_attack != "none":
+    payload = _walk(payload, _pn_attack)
 json.dumps({"payload_json": canonical_json(payload), "sha": payload_sha256(payload), "compute_ms": compute_ms})
 `;
 
@@ -114,6 +173,8 @@ function run(m: Extract<ToWorker, { type: "run" }>) {
   pyodide.globals.set("_pn_kernel", m.kernel);
   pyodide.globals.set("_pn_n_classes", Number(m.params["n_classes"] ?? 0));
   pyodide.globals.set("_pn_params_json", JSON.stringify(m.params));
+  pyodide.globals.set("_pn_attack", m.attack ?? "none");
+  if (m.attack && m.attack !== "none") pyodide.runPython(DEMO_ATTACK);
   const out = JSON.parse(pyodide.runPython(RUN_PROGRAM) as string) as {
     payload_json: string;
     sha: string;

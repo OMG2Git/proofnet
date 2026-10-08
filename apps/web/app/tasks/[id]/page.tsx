@@ -5,7 +5,14 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import AuthGate from "@/components/AuthGate";
 import LineChart from "@/components/LineChart";
-import { api, type ArtifactOut, type EventOut, type TaskStatus, type TrainingStatus } from "@/lib/api/client";
+import {
+  api,
+  type ArtifactOut,
+  type EventOut,
+  type TaskStatus,
+  type TrainingStatus,
+  type VerificationRecord,
+} from "@/lib/api/client";
 
 const STATES = ["queued", "running", "aggregating", "completed"] as const;
 
@@ -253,10 +260,66 @@ function TrainingPanel({ id, status }: { id: string; status: string }) {
   );
 }
 
+function VerificationPanel({
+  recs,
+  policy,
+}: {
+  recs: VerificationRecord[];
+  policy: { [key: string]: unknown };
+}) {
+  const audited = recs.filter((r) => r.audited);
+  const rejected = audited.filter((r) => r.exceeded);
+  const mode = String(policy["mode"] ?? "adaptive");
+  return (
+    <>
+      <h1>Verification</h1>
+      <p className="muted" data-testid="vsummary">
+        Mode <strong>{mode === "none" ? "off" : mode}</strong> · {recs.length} result{recs.length === 1 ? "" : "s"} received ·{" "}
+        {audited.length} audited by backend recomputation · {rejected.length} rejected as wrong.
+        {recs.length - audited.length > 0 &&
+          ` ${recs.length - audited.length} were not audited this time (adaptive sampling); the merged result is still checked end-to-end.`}
+      </p>
+      {recs.length > 0 && (
+        <table data-testid="vrecords">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Device</th>
+              <th>Audit probability</th>
+              <th>Audited?</th>
+              <th>Discrepancy</th>
+              <th>Tolerance</th>
+              <th>Decision</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recs.map((r) => (
+              <tr key={r.id}>
+                <td>{new Date(r.at).toLocaleTimeString()}</td>
+                <td>{r.device_name ?? r.device_id}</td>
+                <td>{r.audit_probability === null || r.audit_probability === undefined ? "—" : `${(r.audit_probability * 100).toFixed(1)}%`}</td>
+                <td>{r.audited ? "yes" : "no"}</td>
+                <td>{r.discrepancy === null || r.discrepancy === undefined ? "—" : r.discrepancy.toExponential(2)}</td>
+                <td>{r.tolerance === null || r.tolerance === undefined ? "—" : r.tolerance.toExponential(1)}</td>
+                <td>
+                  <span className={`badge ${r.decision === "verified" ? "succeeded" : r.decision === "accepted_unverified" ? "pending" : "rejected"}`}>
+                    {r.decision.replaceAll("_", " ")}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
+  );
+}
+
 function Monitor() {
   const { id } = useParams<{ id: string }>();
   const [st, setSt] = useState<TaskStatus | null>(null);
   const [events, setEvents] = useState<EventOut[]>([]);
+  const [recs, setRecs] = useState<VerificationRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -266,9 +329,11 @@ function Monitor() {
       try {
         const s = await api.taskStatus(id);
         const ev = await api.taskEvents(id);
+        const vr = await api.trustRecords(id).catch(() => [] as VerificationRecord[]);
         if (!alive) return;
         setSt(s);
         setEvents(ev);
+        setRecs(vr);
         setError(null);
         done = ["completed", "failed", "cancelled"].includes(s.task.status);
       } catch (e) {
@@ -433,6 +498,8 @@ function Monitor() {
         </table>
       )}
 
+      <VerificationPanel recs={recs} policy={t.verification_policy} />
+
       {result && (
         <>
           <h1>Result</h1>
@@ -486,7 +553,7 @@ function Monitor() {
             </div>
             <p className="warn">
               model.joblib is a pickle: only load it from a trusted ProofNet instance. model.json is the safe
-              alternative. Results are unverified (Part 2 adds verification).
+              alternative. The report lists how many results were audited by recomputation.
             </p>
           </div>
         </>
