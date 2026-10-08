@@ -1,5 +1,6 @@
 """MongoDB (async PyMongo) + GridFS. The only persistent store (D4)."""
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -35,7 +36,10 @@ async def connect(settings: Settings) -> Db:
     )
     db = client[settings.mongodb_db]
     handle = Db(client, db, AsyncGridFSBucket(db))
-    await ensure_indexes(handle)
+    try:
+        await ensure_indexes(handle)
+    except Exception:  # e.g. the free tier is full (writes blocked): keep serving reads/logins
+        logging.getLogger("proofnet.db").exception("could not ensure indexes at startup")
     return handle
 
 

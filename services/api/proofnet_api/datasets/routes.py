@@ -7,6 +7,7 @@ from typing import Annotated, Any
 
 import pandas as pd
 from fastapi import APIRouter, File, UploadFile
+from gridfs.errors import NoFile
 
 from proofnet_kernels.server.common import MAX_ROWS, profile_dataframe
 
@@ -16,6 +17,7 @@ from ..deps import DbDep, SettingsDep, UserDep
 from ..errors import ProofNetError
 from ..events import emit
 from ..ids import new_id
+from ..storage import ensure_capacity
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
@@ -35,7 +37,12 @@ def parse_csv(raw: bytes) -> pd.DataFrame:
 
 async def load_dataset_frame(db: Db, dataset: dict[str, Any]) -> pd.DataFrame:
     buf = io.BytesIO()
-    await db.fs.download_to_stream(dataset["raw_file_id"], buf)
+    try:
+        await db.fs.download_to_stream(dataset["raw_file_id"], buf)
+    except NoFile:
+        raise ProofNetError(
+            410, "DATASET_REMOVED", "This dataset file was removed to free storage; upload it again"
+        ) from None
     return await asyncio.to_thread(parse_csv, buf.getvalue())
 
 
@@ -65,6 +72,7 @@ async def upload_dataset(
             )
         chunks.append(block)
     raw = b"".join(chunks)
+    await ensure_capacity(db, settings, need_mb=size / 1e6 * 2)
     if not raw:
         raise ProofNetError(422, "INVALID_CSV", "Uploaded file is empty")
     df = await asyncio.to_thread(parse_csv, raw)

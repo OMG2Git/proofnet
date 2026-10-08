@@ -9,6 +9,7 @@ from typing import Annotated, Any
 
 import numpy as np
 from fastapi import APIRouter, File, Query, Request, UploadFile
+from gridfs.errors import NoFile
 
 from proofnet_kernels.server import cnn as cnn_srv
 from proofnet_kernels.server import images
@@ -30,6 +31,7 @@ from ..events import emit
 from ..ids import new_id
 from ..scheduling.planner import device_score
 from ..scheduling.scheduler import _eligible_devices
+from ..storage import ensure_capacity
 from ..tasks.prepared import prime_images
 from ..tasks.routes import task_out
 from ..training.service import split_batch
@@ -76,6 +78,7 @@ async def upload_image_dataset(
             )
         chunks.append(block)
     raw = b"".join(chunks)
+    await ensure_capacity(db, settings, need_mb=size / 1e6 * 3)
     name = (file.filename or "images.zip").lower()
     try:
         if name.endswith(".csv"):
@@ -186,7 +189,12 @@ async def create_image_task(
     if not report.ok:
         raise ProofNetError(422, "VALIDATION_FAILED", "Task validation failed", report.errors)
     buf = io.BytesIO()
-    await db.fs.download_to_stream(ds_doc["npz_file_id"], buf)
+    try:
+        await db.fs.download_to_stream(ds_doc["npz_file_id"], buf)
+    except NoFile:
+        raise ProofNetError(
+            410, "DATASET_REMOVED", "This dataset was removed to free storage; upload it again"
+        ) from None
 
     def build() -> tuple[cnn_srv.ImagePrepared, bytes, str]:
         with np.load(io.BytesIO(buf.getvalue()), allow_pickle=False) as z:

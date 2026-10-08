@@ -6,6 +6,7 @@ last_seen_at, so a repeat (or a concurrent heartbeat) cannot apply one twice.
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timedelta
 
 from .aggregation.service import aggregate_task, release_stale_claims
@@ -14,6 +15,7 @@ from .db import Db, utcnow
 from .events import emit
 from .scheduling.lifecycle import expire_assignments, expire_tasks
 from .scheduling.scheduler import schedule_pass
+from .storage import free_space
 from .training.service import resume_training
 
 log = logging.getLogger("proofnet.reconciler")
@@ -55,9 +57,14 @@ async def run_once(db: Db, settings: Settings, now: datetime | None = None) -> N
 
 
 async def run_forever(db: Db, settings: Settings) -> None:
+    last_storage_check = 0.0
     while True:
         try:
             await run_once(db, settings)
+            now = time.monotonic()
+            if now - last_storage_check >= settings.storage_check_seconds:
+                last_storage_check = now
+                await free_space(db, settings)  # releases old data only above the budget
         except asyncio.CancelledError:
             raise
         except Exception:

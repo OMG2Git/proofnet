@@ -421,6 +421,11 @@ async def _close_round(
         prepared.y_train,
     )
     await save_state(db, task_id, r + 1, out["w"], out["v"])
+    # The gradients are consumed: keep digests/metadata, drop the ~150 KB payloads (free-tier storage)
+    await db.col("partial_results").update_many(
+        {"assignment_id": {"$in": [c["accepted_assignment_id"] for c in chunks]}},
+        {"$unset": {"payload": ""}, "$set": {"payload_dropped": True}},
+    )
     names = {
         d["_id"]: d["name"]
         async for d in db.col("devices").find({"_id": {"$in": [a["device_id"] for a in asgs]}})
