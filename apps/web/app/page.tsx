@@ -12,6 +12,8 @@ export default function Home() {
         <Link href="/login">Sign in</Link>
         <Link href="/signup">Create account</Link>
         <Link href="/tasks">My tasks</Link>
+        <Link href="/limitations">Limitations</Link>
+        <Link href="/settings">Backend settings</Link>
       </div>
     </main>
   );

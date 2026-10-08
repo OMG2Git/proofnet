@@ -91,6 +91,11 @@ th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--lin
 .barrow { display: grid; grid-template-columns: 110px 1fr 48px; gap: 8px; align-items: center; font-size: 13px; }
 .barrow .track { background: var(--line); border-radius: 4px; height: 12px; overflow: hidden; }
 .barrow .fill { background: var(--ok); height: 100%; }
+section.bigscreen { max-width: 1800px; font-size: 22px; }
+section.bigscreen .devices { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+section.bigscreen .device { padding: 18px 22px; border-left-width: 10px; }
+section.bigscreen .badge { font-size: 20px; padding: 4px 14px; }
+section.bigscreen h1 { font-size: 40px; }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #14171c; --card: #1c2027; --text: #e6e9ef; --muted: #98a0ae; --line: #2c323d; --accent: #6b93ff; }
   input, select { background: #14171c; color: var(--text); }

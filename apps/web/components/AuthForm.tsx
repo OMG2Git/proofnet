@@ -59,6 +59,9 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
         {busy ? "Please wait…" : mode === "signup" ? "Sign up" : "Sign in"}
       </button>
       <p className="muted">
+        <Link href="/settings">Backend settings</Link> · <Link href="/limitations">Limitations</Link>
+      </p>
+      <p className="muted">
         {mode === "signup" ? (
           <>
             Have an account? <Link href="/login">Sign in</Link>

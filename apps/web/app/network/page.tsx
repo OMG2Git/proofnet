@@ -7,6 +7,7 @@ import { api, type NetworkSummary } from "@/lib/api/client";
 function Network() {
   const [data, setData] = useState<NetworkSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [big, setBig] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -30,8 +31,13 @@ function Network() {
 
   if (!data) return <p className={error ? "error" : "muted"}>{error ?? "Loading…"}</p>;
   return (
-    <section className="wide">
-      <h1>Network</h1>
+    <section className={big ? "wide bigscreen" : "wide"}>
+      <h1>
+        Network{" "}
+        <button data-testid="bigtoggle" onClick={() => setBig((b) => !b)}>
+          {big ? "Normal view" : "Big screen"}
+        </button>
+      </h1>
       <p data-testid="counts">
         {Object.entries(data.counts).map(([k, v]) => (
           <span key={k} className={`badge ${k}`} style={{ marginRight: 8 }}>

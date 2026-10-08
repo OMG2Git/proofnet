@@ -137,6 +137,9 @@ export const api = {
   listTasks: () => request<TaskOut[]>("/tasks"),
   getTask: (id: string) => request<TaskOut>(`/tasks/${id}`),
   taskStatus: (id: string) => request<TaskStatus>(`/tasks/${id}/status`),
+  adminMe: () => request<{ admin: boolean }>("/admin/me"),
+  resetDemo: () =>
+    request<{ reset: boolean; deleted: Record<string, number> }>("/admin/demo/reset", { method: "POST" }),
   imageDatasets: () => request<ImageDatasetOut[]>("/image-datasets"),
   uploadImageDataset: (file: File, side = 28) => {
     const form = new FormData();

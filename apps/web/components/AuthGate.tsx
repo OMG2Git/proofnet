@@ -27,6 +27,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <Link href="/images/new">Image training</Link>
         <Link href="/contribute">Contribute</Link>
         <Link href="/network">Network</Link>
+        <Link href="/settings">Settings</Link>
         <span className="spacer" />
         <span className="muted">{user.display_name}</span>
         <button

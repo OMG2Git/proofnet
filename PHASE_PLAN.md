@@ -378,6 +378,8 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 
 **Risks.** Venue Wi-Fi, free-host outage. *Mitigation:* own hotspot; fallback path; recording.
 
+**Status (prep done 2026-10-08, gate pending):** built ahead of the gates because they need no phones — `POST /admin/demo/reset` (admin accounts via `ADMIN_EMAILS`; keeps users and devices), Settings page with runtime API-URL switch, connection test and pre-warm (needs no login), `/network` big-screen mode, `/limitations` page, `DEMO_RUNBOOK.md` (checklists, demo order, recovery, tunnel fallback), automatic storage guard. Still to do for M3: five consecutive real-phone demos on the deployed system, the fallback rehearsal (< 2 min), recorded video, tag `mvp-1.0`.
+
 **Gate to Part 2.** M3 passes. Part 2 integration work on the main branch starts only now.
 
 ---
