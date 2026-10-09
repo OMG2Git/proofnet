@@ -396,7 +396,9 @@ def test_cnn_training_survives_a_gradient_poisoning_device(venv: Env) -> None:
     set_scores(venv, [bad, g1, g2], [3e6, 1e6, 1e6])
     bad.faults = Faults(attack="sign_flip")
     ds = upload_images(client, h)
-    m = image_manifest(ds["id"], execution={"min_devices": 2, "max_devices": 3})
+    m = image_manifest(
+        ds["id"], execution={"min_devices": 2, "max_devices": 3}, verification="full"
+    )  # audit every result: no unaudited poisoned round can be merged
     st = run_training(venv, [bad, g1, g2], h, m)
     assert st["task"]["status"] == "completed", st["task"]["error"]
     assert st["task"]["result"]["reference_check"]["passed"] is True
