@@ -190,10 +190,13 @@ function Wizard() {
         <select value={taskType} onChange={(e) => onTypeChange(e.target.value)}>
           {types.map((t) => (
             <option key={t.task_type} value={t.task_type}>
-              {t.task_type} — {t.description}
+              {t.task_type}
             </option>
           ))}
         </select>
+        <span className="muted" style={{ display: "block", fontWeight: 400, marginTop: 4 }}>
+          {types.find((t) => t.task_type === taskType)?.description}
+        </span>
       </label>
       <label>
         CSV file (UTF-8, header row, ≤ 25 MB)

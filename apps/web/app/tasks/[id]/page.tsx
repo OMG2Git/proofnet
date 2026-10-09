@@ -145,7 +145,7 @@ function ImageResult({ names, metrics }: { names: string[]; metrics: Record<stri
                 <tr key={i}>
                   <th>{(names[i] ?? String(i)).slice(0, 8)}</th>
                   {row.map((v, j) => (
-                    <td key={j} style={{ background: `rgba(43,89,217,${(v / max) * 0.7})` }}>
+                    <td key={j} style={{ background: `rgba(34,211,238,${(v / max) * 0.7})` }}>
                       {v}
                     </td>
                   ))}
@@ -214,18 +214,18 @@ function TrainingPanel({ id, status }: { id: string; status: string }) {
         )}
         <div className="legend">
           <span>
-            <i style={{ background: "#d9534f" }} />
+            <i style={{ background: "#f87171" }} />
             loss (batch, from devices)
           </span>
           <span>
-            <i style={{ background: "#2b59d9" }} />
+            <i style={{ background: "#22d3ee" }} />
             batch accuracy
           </span>
           <span className="muted">● centrally verified rounds</span>
         </div>
-        <LineChart series={[{ name: "loss", color: "#d9534f", values: loss }]} marks={tr.verified_rounds} yMin={0} />
+        <LineChart series={[{ name: "loss", color: "#f87171", values: loss }]} marks={tr.verified_rounds} yMin={0} />
         <LineChart
-          series={[{ name: "accuracy", color: "#2b59d9", values: acc }]}
+          series={[{ name: "accuracy", color: "#22d3ee", values: acc }]}
           marks={tr.verified_rounds}
           yMin={0}
           yMax={1}

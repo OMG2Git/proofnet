@@ -1,95 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import AuthGate from "@/components/AuthGate";
-import { api, type NetworkSummary } from "@/lib/api/client";
-
-function Network() {
-  const [data, setData] = useState<NetworkSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [big, setBig] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    const tick = () =>
-      api
-        .networkSummary()
-        .then((d) => {
-          if (alive) {
-            setData(d);
-            setError(null);
-          }
-        })
-        .catch((e: Error) => alive && setError(e.message));
-    void tick();
-    const t = setInterval(tick, 1500);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, []);
-
-  if (!data) return <p className={error ? "error" : "muted"}>{error ?? "Loading…"}</p>;
-  return (
-    <section className={big ? "wide bigscreen" : "wide"}>
-      <h1>
-        Network{" "}
-        <button data-testid="bigtoggle" onClick={() => setBig((b) => !b)}>
-          {big ? "Normal view" : "Big screen"}
-        </button>
-      </h1>
-      <p data-testid="counts">
-        {Object.entries(data.counts).map(([k, v]) => (
-          <span key={k} className={`badge ${k}`} style={{ marginRight: 8 }}>
-            {k}: {v}
-          </span>
-        ))}
-        <span className="muted"> tasks running: {data.tasks_running}</span>
-      </p>
-      {error && <p className="error">Connection problem: {error}</p>}
-      <div className="devices">
-        {data.devices.map((d) => (
-          <div key={d.id} className={`device ${d.status}`} data-testid="device-card">
-            <div>
-              <strong>{d.name}</strong>
-            </div>
-            <div className="muted">
-              {d.device_type} · {d.runtime_kind ?? "no runtime"}
-            </div>
-            <div>
-              <span className={`badge ${d.status}`}>{d.status}</span>{" "}
-              {d.trust_status && (
-                <span
-                  className={`badge ${d.trust_status === "trusted" ? "succeeded" : d.trust_status === "quarantined" ? "rejected" : d.trust_status === "watch" ? "busy" : "pending"}`}
-                  title={`trust ${(d.trust ?? 0).toFixed(2)}`}
-                  data-testid="trust-badge"
-                >
-                  {d.trust_status}
-                </span>
-              )}
-            </div>
-            <div>{d.score_cells_per_sec ? `${(d.score_cells_per_sec / 1e6).toFixed(2)} M cells/s` : "no benchmark"}</div>
-            <div className="muted">
-              last seen {d.last_seen_age_seconds === null || d.last_seen_age_seconds === undefined ? "never" : `${Math.round(d.last_seen_age_seconds)}s ago`}
-            </div>
-            <div className="muted" data-testid="holding">
-              {d.current_chunk_index !== null && d.current_chunk_index !== undefined
-                ? `holds chunk ${d.current_chunk_index} (${d.current_rows} rows) of "${d.current_task_name}"`
-                : d.current_assignment_id
-                  ? `assignment ${d.current_assignment_id}`
-                  : "no chunk"}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+import NetworkDashboard from "@/components/network/NetworkDashboard";
 
 export default function NetworkPage() {
   return (
     <AuthGate>
-      <Network />
+      <NetworkDashboard />
     </AuthGate>
   );
 }

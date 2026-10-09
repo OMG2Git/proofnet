@@ -66,6 +66,10 @@ function Simulator() {
         e-detector, suspicion memory, accusation) over synthetic devices, so the policy can be studied at a scale no demo can
         reach. Device behaviour is simulated; the policy is not. Live results are on the Trust page.
       </p>
+      <div className="sim-banner" role="note" data-testid="sim-banner">
+        <strong>SIMULATION — not live platform data.</strong> Every number on this page comes from a seeded synthetic
+        population and is reproducible from the settings below; none of it is measured from real devices or tasks.
+      </div>
       <div className="card">
         <div className="grid">
           {num("honest", "Honest devices", 1, 1, 200)}
@@ -100,6 +104,12 @@ function Simulator() {
 
       {out && s && cmp && (
         <>
+          <p className="sim-banner" data-testid="sim-config">
+            Simulated result · {out.request.honest} honest + {out.request.attackers} attacking devices ·{" "}
+            {out.request.rounds} rounds · seed {out.request.seed} · α = {out.request.alpha} · cheat rate{" "}
+            {out.request.cheat_rate} · fixed-rate baseline {out.request.fixed_rate} · sleeper after{" "}
+            {out.request.sleeper_after} results
+          </p>
           <h1>Policies compared on the same population</h1>
           <table data-testid="sim-compare">
             <thead>
@@ -140,13 +150,13 @@ function Simulator() {
 
           <h1>Shown policy over time: {out.summary["policy"] as string}</h1>
           <div className="legend">
-            <span><i style={{ background: "#b3261e" }} />corrupt results merged (cumulative)</span>
-            <span><i style={{ background: "#1c7c4a" }} />corrupt results rejected (cumulative)</span>
+            <span><i style={{ background: "#f87171" }} />corrupt results merged (cumulative)</span>
+            <span><i style={{ background: "#34d399" }} />corrupt results rejected (cumulative)</span>
           </div>
           <LineChart
             series={[
-              { name: "merged", color: "#b3261e", values: s["corrupt_accepted"] ?? [] },
-              { name: "rejected", color: "#1c7c4a", values: s["corrupt_rejected"] ?? [] },
+              { name: "merged", color: "#f87171", values: s["corrupt_accepted"] ?? [] },
+              { name: "rejected", color: "#34d399", values: s["corrupt_rejected"] ?? [] },
             ]}
             yFormat={(v) => String(Math.round(v))}
           />
@@ -162,13 +172,13 @@ function Simulator() {
             yFormat={(v) => String(Math.round(v))}
           />
           <div className="legend">
-            <span><i style={{ background: "#1c7c4a" }} />honest devices: audit probability</span>
-            <span><i style={{ background: "#b3261e" }} />attackers: audit probability</span>
+            <span><i style={{ background: "#34d399" }} />honest devices: audit probability</span>
+            <span><i style={{ background: "#f87171" }} />attackers: audit probability</span>
           </div>
           <LineChart
             series={[
-              { name: "honest", color: "#1c7c4a", values: s["honest_audit_probability"] ?? [] },
-              { name: "attackers", color: "#b3261e", values: s["attacker_audit_probability"] ?? [] },
+              { name: "honest", color: "#34d399", values: s["honest_audit_probability"] ?? [] },
+              { name: "attackers", color: "#f87171", values: s["attacker_audit_probability"] ?? [] },
             ]}
             yMin={0}
             yMax={1}

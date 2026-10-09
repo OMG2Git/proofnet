@@ -1,11 +1,16 @@
 """Live network summary for the /network dashboard (real device state only). Cached ~1 s."""
 
-from fastapi import APIRouter, Request
+from datetime import datetime
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Request
 
 from .. import cache
-from ..contracts.api import NetworkDevice, NetworkSummary
+from ..admin.routes import AdminDep
+from ..contracts.api import EventOut, NetworkDevice, NetworkSummary
 from ..db import utcnow
 from ..deps import DbDep, SettingsDep, UserDep
+from ..tasks.monitor import describe_event
 from ..trust.store import trust_of
 
 router = APIRouter(prefix="/network", tags=["network"])
@@ -69,3 +74,40 @@ async def network_summary(
     summary = NetworkSummary(server_time=now, counts=counts, devices=devices, tasks_running=running)
     cache.put(request.app, "network", summary, settings.status_cache_seconds)
     return summary
+
+
+@router.get("/events", response_model=list[EventOut])
+async def network_events(
+    db: DbDep,
+    _: AdminDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 80,
+    since: datetime | None = None,
+) -> list[EventOut]:
+    """Newest `limit` events across all tasks and devices, oldest first (admin only).
+
+    `since` returns only events strictly newer than that timestamp, so a dashboard can poll
+    cheaply and deduplicate by event id.
+    """
+    q = {"ts": {"$gt": since}} if since else {}
+    events = [e async for e in db.col("events").find(q).sort("ts", -1).limit(limit)]
+    events.reverse()
+    dev_ids = list({e["device_id"] for e in events if e.get("device_id")})
+    chunk_ids = list({e["chunk_id"] for e in events if e.get("chunk_id")})
+    names = {d["_id"]: d["name"] async for d in db.col("devices").find({"_id": {"$in": dev_ids}})}
+    chunk_index = {
+        c["_id"]: c["index"] async for c in db.col("chunks").find({"_id": {"$in": chunk_ids}})
+    }
+    return [
+        EventOut(
+            id=e["_id"],
+            ts=e["ts"],
+            type=e["type"],
+            task_id=e.get("task_id"),
+            device_id=e.get("device_id"),
+            chunk_id=e.get("chunk_id"),
+            assignment_id=e.get("assignment_id"),
+            data=e.get("data", {}),
+            message=describe_event(e, names, chunk_index),
+        )
+        for e in events
+    ]

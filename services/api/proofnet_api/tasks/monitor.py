@@ -183,6 +183,17 @@ def describe_event(e: dict[str, Any], names: dict[str, str], chunk_index: dict[s
         return f"{chunk.capitalize()} returned to the queue (attempt {d.get('attempt')}/{d.get('max_attempts')})"
     if t == "late_result":
         return f"Late result from {dev} for {chunk} ignored"
+    if t == "result_audited":
+        verdict = "passed" if d.get("passed") else "FAILED"
+        return f"Audit of {dev}'s {chunk}: {verdict} (discrepancy {d.get('discrepancy')})"
+    if t == "device_quarantined":
+        return f"{dev} quarantined: {d.get('reason', '')}"
+    if t == "device_registered":
+        return f"{d.get('name') or dev} registered"
+    if t == "device_online":
+        return f"{dev} came online"
+    if t == "device_offline":
+        return f"{dev} went offline"
     if t == "task_aggregating":
         return "All chunks complete; merging partial results"
     if t == "task_completed":

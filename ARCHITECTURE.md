@@ -179,10 +179,17 @@ Pure client of the FastAPI API. No business logic in Next.js API routes (none ar
 | `/tasks` | user | My tasks |
 | `/tasks/[id]` | user, evaluator | Live task monitor: state timeline, chunk table, device lanes, aggregation, correctness check, downloads |
 | `/contribute` | contributor | My devices, register this device |
-| `/contribute/run` | contributor (on the phone) | **Worker console**: runtime loading, benchmark, status, current assignment, log, completed work, keep-awake toggle |
-| `/network` | evaluator (projector) | Big-screen dashboard: all devices, states, current chunks, recent events |
+| `/contribute/run` | contributor (on the phone) | **Worker console** (mobile-first): startup steps, benchmark, current chunk (task, chunk, rows), heartbeat and offline/background warnings, audit outcomes and credits, wake-lock explanation; log and demo-misbehave switch collapsed |
+| `/network` | evaluator / admin (projector) | **Live network dashboard**: KPI strip, pixel-art world (PixiJS), filters + search, device assignment table, task activity feed, worker detail drawer with admin quarantine/reinstate |
 
-Data freshness: dashboards poll `GET /tasks/{id}/status` and `GET /network/summary` every ~1.5 s. (SSE is a later enhancement, §18.)
+Data freshness: dashboards poll `GET /tasks/{id}/status`, `GET /network/summary` (every 1.5 s, 5 s in a hidden tab) and, for admins, `GET /network/events?since=` (every 2 s). (SSE is a later enhancement, §18.)
+
+#### 3.2.1 UI layer (added 2026-10-09)
+
+- **Design system**: one dark theme in `app/globals.css`: tokens (cyan = assigned work / network, violet = computation, green = verified, amber = pending / warning, red = rejected / quarantined), pixel display font (Silkscreen) + IBM Plex Mono via `next/font`, existing class names kept so every route restyles at once. State is never colour-only (badges carry a glyph and text; canvas states carry a glyph and a label). Honours `prefers-reduced-motion`.
+- **Data adapter**: `lib/network/logic.ts` is pure (no React, no clocks): backend `NetworkSummary` + `EventOut[]` become a `WorldDevice[]` view model; events become animation `Cue`s; also filters, KPIs and connection status (`loading | live | stale | down`). `lib/network/use-network-data.ts` is the only I/O: polling with `AbortController`, out-of-order/stale responses dropped, events de-duplicated by id with a 2 s overlap on `since`, slower polling in hidden tabs.
+- **Truthfulness rules**: a device exists in the scene iff the backend lists it; `computing` is shown only after an `assignment_started` event for its *current* assignment (otherwise `assigned` or plain `busy`); audits run synchronously on result intake, so there is no "auditing" state, only `result_audited` flashes; history on first load is never replayed as live animation; slot positions are presentation-only (ring order = backend creation order).
+- **Pixel world**: `components/network/pixel-world.ts` (PixiJS 8, used directly; `@pixi/react` was evaluated and not needed). Sprites are drawn from string matrices in `lib/network/sprite-data.ts` (no image assets). The ticker sleeps when nothing animates (30 fps cap otherwise); WebGL failure falls back to a plain device list; the canvas has a text equivalent (`role="img"` + live region) and the same data is in the table. Reference repos (ClawBoard, NetViz, procedural-isometric, pixi-react) are MIT-licensed; their *ideas* were used, no code was copied. NetViz animates mock traffic; ProofNet animates only real events.
 
 ### 3.3 Backend (Python + FastAPI)
 
@@ -822,6 +829,7 @@ Auth: users use `Authorization: Bearer <JWT>`; workers use `Authorization: Beare
 | `POST /image-tasks/validate`, `POST /image-tasks` | user | CNN task: validate + per-round batch-split preview / create (prepare split → `queued`) |
 | `GET /tasks/{id}/training` | owner | Training curve: per-round loss/accuracy, per-device rows and timings, centrally verified rounds |
 | `GET /network/summary` | user (or demo-public) | Online/idle/busy counts, device list (names, scores, states), active chunks |
+| `GET /network/events?since=&limit=` | admin | Newest `limit` (<= 200) events across all tasks/devices, oldest first, with human-readable `message`; `since` = strictly newer (added 2026-10-09) |
 | `GET /runtime/manifest` | device | Pyodide version, kernel bundle version + SHA-256, intervals |
 | `GET /runtime/kernels/{version}` | device | Kernel bundle zip (`proofnet_kernels/core`) |
 | `POST /worker/session` | device | Start session: capabilities, runtime, benchmark |
@@ -1056,3 +1064,4 @@ Login lockout (5 failures → 5 min, also for unknown e-mails, no enumeration), 
 | D13 | Shiryaev–Roberts e-detector with block-wise thresholds `N²/α_m` for lifetime false-accusation control | Plain product e-process (sleeper agents hide behind history); power-of-two restarts (failed the sleeper test) | A tighter provable bound is needed |
 | D14 | Reward ledger = mutable entries + append-only events, conditional transitions, replay check | Single balance counter | Real payments are introduced |
 | D15 | Part 2 integrated before the M3 gate at the owner's request | Wait for M3 (original rule) | — |
+| D16 | Live dashboard by REST polling + one admin-only global event feed; PixiJS used directly; every animation derived from a real event or snapshot | WebSocket/SSE (no backend support, not needed at this scale); `@pixi/react`; mock traffic for visual effect | Hundreds of devices or sub-second visuals needed (then SSE, §18) |

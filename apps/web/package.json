@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
+    "e2e": "node e2e/network.e2e.mjs",
     "gen:api": "openapi-typescript lib/api/openapi.json -o lib/api/schema.d.ts",
     "build:worker": "esbuild worker-runtime/compute.worker.ts --bundle --format=esm --target=es2022 --outfile=public/compute.worker.js",
     "predev": "npm run build:worker",
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "next": "16.4.0",
+    "pixi.js": "^8.22.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -27,6 +29,7 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "16.4.0",
     "openapi-typescript": "7.13.0",
+    "playwright-core": "^1.64.0",
     "typescript": "5.9.3"
   }
 }

@@ -15,6 +15,7 @@ export type DeviceRegistered = S["DeviceRegistered"];
 export type DeviceRegisterRequest = S["DeviceRegisterRequest"];
 export type DeviceCapabilities = S["DeviceCapabilities"];
 export type NetworkSummary = S["NetworkSummary"];
+export type NetworkDevice = S["NetworkDevice"];
 export type RuntimeManifest = S["RuntimeManifest"];
 export type SessionRequest = S["SessionRequest"];
 export type SessionResponse = S["SessionResponse"];
@@ -93,7 +94,14 @@ export class ApiRequestError extends Error {
 
 async function request<T>(
   path: string,
-  opts: { method?: string; json?: unknown; form?: FormData; raw?: string; token?: string } = {},
+  opts: {
+    method?: string;
+    json?: unknown;
+    form?: FormData;
+    raw?: string;
+    token?: string;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {};
   const token = opts.token ?? getToken();
@@ -109,8 +117,14 @@ async function request<T>(
   }
   let res: Response;
   try {
-    res = await fetch(`${getApiBase()}${path}`, { method: opts.method ?? "GET", headers, body });
-  } catch {
+    res = await fetch(`${getApiBase()}${path}`, {
+      method: opts.method ?? "GET",
+      headers,
+      body,
+      signal: opts.signal,
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") throw e; // cancelled by the caller
     throw new ApiRequestError(0, "NETWORK", "Cannot reach the ProofNet backend");
   }
   if (!res.ok) {
@@ -179,8 +193,20 @@ export const api = {
   myDevices: () => request<DeviceOut[]>("/devices/mine"),
   patchDevice: (id: string, b: S["DevicePatch"]) =>
     request<DeviceOut>(`/devices/${id}`, { method: "PATCH", json: b }),
-  networkSummary: () => request<NetworkSummary>("/network/summary"),
+  networkSummary: (o: { signal?: AbortSignal } = {}) =>
+    request<NetworkSummary>("/network/summary", { signal: o.signal }),
+  /** Admin only: newest events across all tasks/devices, oldest first. */
+  networkEvents: (o: { since?: string; limit?: number; signal?: AbortSignal } = {}) => {
+    const q = new URLSearchParams();
+    if (o.since) q.set("since", o.since);
+    if (o.limit) q.set("limit", String(o.limit));
+    const qs = q.toString();
+    return request<EventOut[]>(`/network/events${qs ? `?${qs}` : ""}`, { signal: o.signal });
+  },
   trustOverview: () => request<TrustOverview>("/trust/overview"),
+  trustDevice: (id: string) => request<DeviceTrust>(`/trust/devices/${encodeURIComponent(id)}`),
+  /** Most recent verification records (admin: all devices; others: own devices). */
+  trustRecentRecords: (limit = 300) => request<VerificationRecord[]>(`/trust/records?limit=${limit}`),
   trustRecords: (taskId: string) =>
     request<VerificationRecord[]>(`/trust/records?task_id=${encodeURIComponent(taskId)}&limit=200`),
   simulate: (b: SimulateRequest) =>

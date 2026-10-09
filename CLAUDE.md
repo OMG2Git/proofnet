@@ -41,7 +41,7 @@ Two real Android phones open the ProofNet contributor page in Chrome, register, 
 5. P6–P7 ★ M3 — failures, second kernel, deployment, five consecutive successful demos.
 6. Part 2 only after M3 (offline research may run in parallel). **Overridden by the owner on 2026-10-08: Part 2 (P8–P11) was built and tested before M3. Part 1's real-phone gates (P6 scenarios, P6b CNN run, M3 five demos) remain open.**
 
-Current phase: **P6 / P6b** — P0–P5 completed (M1, M2 passed 2026-10-07). P6 (reliability) implemented and verified automatically; its phone scenarios are pending. **P6b (image CNN workload, added 2026-10-08) implemented and verified automatically and in headless Chromium with two Pyodide workers (Fashion-MNIST subset: 40 rounds in 84 s, batch split 67.2%/32.8% by measured benchmark, centralized gradient check PASSED at 1.35e-6); real-phone gate pending.** **Part 2 (P8–P11) implemented and verified automatically 2026-10-08:** audit by backend recomputation, PWAV trust/quarantine, forensics, reward ledger with clawback and replay check, security hardening, attack harness + simulator, dashboards `/trust` `/rewards` `/security` `/simulator`. Update this line as phases complete.
+Current phase: **P6 / P6b** — P0–P5 completed (M1, M2 passed 2026-10-07). P6 (reliability) implemented and verified automatically; its phone scenarios are pending. **P6b (image CNN workload, added 2026-10-08) implemented and verified automatically and in headless Chromium with two Pyodide workers (Fashion-MNIST subset: 40 rounds in 84 s, batch split 67.2%/32.8% by measured benchmark, centralized gradient check PASSED at 1.35e-6); real-phone gate pending.** **Part 2 (P8–P11) implemented and verified automatically 2026-10-08:** audit by backend recomputation, PWAV trust/quarantine, forensics, reward ledger with clawback and replay check, security hardening, attack harness + simulator, dashboards `/trust` `/rewards` `/security` `/simulator`. **UI layer (P12, 2026-10-09):** design system on all routes, `/network` live dashboard with PixiJS pixel world, mobile-first worker console, `GET /network/events` (admin); verified by `npm run e2e` against a real backend, a CLI worker and Chrome; real-phone check pending. Update this line as phases complete.
 
 ---
 
@@ -49,7 +49,7 @@ Current phase: **P6 / P6b** — P0–P5 completed (M1, M2 passed 2026-10-07). P6
 
 | Layer | Choice |
 |---|---|
-| Frontend | **Next.js + TypeScript** on **Vercel**. Pure API client; no workload logic, no Next API routes needed. |
+| Frontend | **Next.js + TypeScript** on **Vercel**. Pure API client; no workload logic, no Next API routes needed. Live dashboard `/network` uses **PixiJS 8** (pixel-art world) fed only by real backend state (ARCHITECTURE 3.2.1). |
 | Backend / control plane | **Python + FastAPI**, **one long-running instance** on a free container host (not Vercel). Includes an idempotent **reconciler loop** (every 2 s). |
 | Database | **MongoDB Atlas free tier** — metadata in collections, files in **GridFS**. Only persistent store. |
 | Compute plane | Contributor devices. **Android = Chrome browser + Pyodide (Python/WASM) + NumPy in a Web Worker.** Laptops/CI = CPython CLI worker using the same kernel code. |

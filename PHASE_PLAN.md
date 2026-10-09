@@ -410,6 +410,9 @@ Sizes are relative effort (S < M < L) for a team of three, not calendar dates. F
 ### Security hardening — DONE
 Login lockout, rate limits, device cap, security headers, foreign-assignment and conflicting-resubmission detection, `security_events`, `/security` dashboard (`tests/test_security.py`).
 
+### P12 — UI layer: design system, live network dashboard, pixel world — DONE (2026-10-09)
+Backend: `GET /network/events` (admin, ARCHITECTURE §13) and event descriptions for audit/quarantine/device events. Frontend: dark design system on every route; `/network` dashboard (KPIs, PixiJS pixel world driven by real events, filters/search, assignment table, activity feed, worker drawer with admin quarantine/reinstate); mobile-first worker console; simulator labelled as simulation with its configuration. Acceptance: `services/api/tests/test_network_events.py`, `apps/web/tests/network-*.test.mjs` (pure view-model, layout, sprites) and `npm run e2e` (real backend + real CLI worker + real Chrome: live assignment, audit, quarantine/reinstate, backend loss and recovery, non-admin permissions, 390 px viewport, no browser errors). The real-phone check of the new console is still pending (see the Part 1 gates).
+
 ---
 
 ## 12. Definition of Done (every phase)

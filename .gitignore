@@ -14,3 +14,4 @@ dist/
 packages/kernels/pyodide-parity/last_discrepancy.json
 apps/web/public/compute.worker.js
 *.tsbuildinfo
+apps/web/e2e/artifacts/

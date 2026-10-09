@@ -49,6 +49,21 @@ Needs two devices on the **same account** (the owner account; for the admin butt
 
 If a phone cannot be used as the attacker: `uv run python -m cli_worker --api <URL>/api/v1 --email <E> --password <P> --name-prefix evil --attack scale` is a laptop attacker (`--attack-after N` makes it a sleeper, `--attack-prob 0.3` an intermittent cheater). Reset between rehearsals: Settings → Admin → *Reset demo data* clears tasks, verification records and rewards but **not** trust profiles, calibration or quarantine — reinstate devices from `/security` (or use fresh device names).
 
+## 3c. Live network view demo (pixel world, ≈ 5 min)
+
+Sign in on the laptop with an **admin** account (`ADMIN_EMAILS`); open `/network` and press **Big screen**. Everything on the canvas is real backend state: a device appears only when it is registered, and packets only fly when the backend assigns work or accepts a result.
+
+| # | Action | What the audience sees |
+|---|---|---|
+| 1 | Phone: `/contribute` → register → **Open worker console** → **Start contributing** | A new pixel phone appears ("NEW DEVICE"), shown *Initializing*, then *Available* once the benchmark is posted. Its score appears in the table. |
+| 2 | Laptop: **New task** → submit (1 or 2 devices) | A cyan packet travels from the coordinator to each device; the device shows *Assigned* (arrow glyph) and a chunk box `c0`; the feed prints "Chunk 0 (N rows) assigned to …". |
+| 3 | While it runs | *Computing* (violet, rising bits) appears only after the worker reports the start. Short tasks may finish between two 2 s polls: that is the polling interval, not a fake delay. |
+| 4 | Result returns | An amber packet flies back; the audit lands as **✓ VERIFIED** (or **✕ REJECTED** with the real reason in the feed). The table's Verification column and the trust score update. |
+| 5 | Click the phone (or its table row) | Drawer: benchmark, trust and suspicion, audit outcomes, credits (owner only), recent events, admin quarantine/reinstate. |
+| 6 | Phone: worker console → *Demo tools* → pick an attack, run another task | The device's result is rejected (red); after enough evidence it is **quarantined**: red dashed box, severed link, row badge and a feed line. |
+| 7 | Lock the phone | After ~20 s it turns *Offline* (grey, dimmed) and its chunk is requeued. |
+| 8 | Unplug the laptop's network briefly | A **STALE / DISCONNECTED** badge appears and the last known state stays visible; it recovers by itself. |
+
 ## 4. If something goes wrong
 
 | Symptom | Do this |
