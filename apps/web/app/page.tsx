@@ -30,10 +30,10 @@ export default function Home() {
           device&apos;s trustworthiness, and merges the verified result, with a reference check against centralized training.
         </p>
         <div className="row">
-          <Link href="/network" className="btn">
+          <Link href="/login" className="btn">
             Open the live network
           </Link>
-          <Link href="/contribute" className="btn" style={{ background: "transparent", color: "var(--accent)", border: "1px solid var(--accent)" }}>
+          <Link href="/login" className="btn" style={{ background: "transparent", color: "var(--accent)", border: "1px solid var(--accent)" }}>
             Contribute a device
           </Link>
         </div>
